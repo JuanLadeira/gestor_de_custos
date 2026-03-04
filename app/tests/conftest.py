@@ -1,64 +1,114 @@
 import pytest
-from fastapi.testclient import TestClient
-from sqlmodel import Session, SQLModel, create_engine
-from app.main import app
-from app.db import get_session
-from app.auth.security import get_password_hash
-from app.tests.factories.todo import TodoFactory
-from app.tests.factories.users import UserFactory
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from testcontainers.postgres import PostgresContainer
 
-
-@pytest.fixture
-def session():
-    with PostgresContainer("postgres:16", driver="psycopg2") as postgres:
-        engine = create_engine(postgres.get_connection_url())
-        SQLModel.metadata.create_all(engine)
-        with Session(engine) as session:
-            yield session
-        SQLModel.metadata.drop_all(engine)
+from app.auth.security import get_password_hash
+from app.database.base import Base
+from app.database.session import get_async_session
+from app.main import app
+from app.tests.factories.tenant import TenantFactory
+from app.tests.factories.usuario import UsuarioFactory
 
 
-# --- Client Fixture for API Testing ---
-@pytest.fixture
-def client(session):
-    def get_session_override():
-        return session
+@pytest.fixture(scope="function")
+async def async_engine():
+    """Create an async engine connected to a test container."""
+    with PostgresContainer("postgres:16", driver="asyncpg") as postgres:
+        # Convert the connection URL to async format
+        url = postgres.get_connection_url()
+        async_url = url.replace("postgresql://", "postgresql+asyncpg://")
 
-    with TestClient(app) as client:
-        app.dependency_overrides[get_session] = get_session_override
+        engine = create_async_engine(async_url, echo=False)
+
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+
+        yield engine
+
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
+
+        await engine.dispose()
+
+
+@pytest.fixture(scope="function")
+async def session(async_engine):
+    """Provide an async session for tests."""
+    async_session_factory = async_sessionmaker(
+        async_engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+        autocommit=False,
+        autoflush=False,
+    )
+
+    async with async_session_factory() as session:
+        yield session
+
+
+@pytest.fixture(scope="function")
+async def client(session):
+    """Provide an async test client with dependency override."""
+
+    async def get_session_override():
+        yield session
+
+    app.dependency_overrides[get_async_session] = get_session_override
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
         yield client
 
     app.dependency_overrides.clear()
 
 
 @pytest.fixture
-def todo_factory(session) -> type[TodoFactory]:
-    """
-    Fixture que fornece a TodoFactory já configurada com a sessão de teste.
-    """
-    # Associa a fábrica à sessão de teste atual
-    TodoFactory._meta.sqlalchemy_session = session
-    return TodoFactory
+def tenant_factory(session) -> type[TenantFactory]:
+    """Fixture that provides TenantFactory configured with the test session."""
+    TenantFactory._meta.sqlalchemy_session = session
+    return TenantFactory
 
 
 @pytest.fixture
-def user_factory(session) -> type[UserFactory]:
-    UserFactory._meta.sqlalchemy_session = session
-
-    return UserFactory
-
-
-@pytest.fixture
-def user(user_factory):
-    senha = "teste"
-    user = user_factory(username="teste", password=get_password_hash(senha))
-    return user
+def usuario_factory(session) -> type[UsuarioFactory]:
+    """Fixture that provides UsuarioFactory configured with the test session."""
+    UsuarioFactory._meta.sqlalchemy_session = session
+    return UsuarioFactory
 
 
 @pytest.fixture
-def token(client, user):
-    response = client.post(
-        "/auth/login", data={"username": user.username, "password": "teste"}
+async def tenant(tenant_factory):
+    """Create a test tenant."""
+    return tenant_factory(nome="Casa Teste", descricao="Tenant para testes")
+
+
+@pytest.fixture
+async def usuario(usuario_factory, tenant):
+    """Create a test usuario."""
+    senha = "teste123"
+    return usuario_factory(
+        username="usuario_teste",
+        email="teste@example.com",
+        password=get_password_hash(senha),
+        nome="Usuario Teste",
+        tenant_id=tenant.id,
+    )
+
+
+@pytest.fixture
+async def token(client, usuario):
+    """Get an access token for the test user."""
+    response = await client.post(
+        "/auth/login",
+        data={"username": usuario.username, "password": "teste123"},
     )
     return response.json()["access_token"]
+
+
+@pytest.fixture
+def auth_headers(token):
+    """Get authorization headers for authenticated requests."""
+    return {"Authorization": f"Bearer {token}"}

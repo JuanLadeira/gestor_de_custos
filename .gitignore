@@ -34,6 +34,7 @@ database.db
 *.spec
 
 .postgres-data
+.redis-data
 .pgdata
 # Installer logs
 pip-log.txt

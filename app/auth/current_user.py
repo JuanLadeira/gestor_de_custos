@@ -1,11 +1,13 @@
 from http import HTTPStatus
 from typing import Annotated
+
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from jwt import DecodeError, ExpiredSignatureError, decode
-from app.user.models import User
-from app.user.services import UserServiceDep
+
 from app.settings import Settings
+from app.usuario.models import Usuario
+from app.usuario.services import UsuarioServiceDep
 
 settings = Settings()
 
@@ -15,10 +17,10 @@ SECRET_KEY = settings.SECRET_KEY
 ALGORITHM = settings.ALGORITHM
 
 
-def get_current_user(
-    service: UserServiceDep,
+async def get_current_user(
+    service: UsuarioServiceDep,
     token: str = Depends(oauth2_scheme),
-):
+) -> Usuario:
     credentials_exception = HTTPException(
         status_code=HTTPStatus.UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -38,11 +40,11 @@ def get_current_user(
     except ExpiredSignatureError:
         raise credentials_exception
 
-    user = service.get_by_username(username)
+    user = await service.get_by_username(username)
     if not user:
         raise credentials_exception
 
     return user
 
 
-CurrentUser = Annotated[User, Depends(get_current_user)]
+CurrentUser = Annotated[Usuario, Depends(get_current_user)]

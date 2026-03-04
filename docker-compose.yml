@@ -1,7 +1,7 @@
 services:
   db:
     image: postgres
-    container_name: db_dev
+    container_name: custos_db_dev
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -10,13 +10,41 @@ services:
       - "5432:5432"
     volumes:
       - ./.postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: custos_redis_dev
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./.redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  mailpit:
+    image: axllent/mailpit
+    container_name: custos_mailpit_dev
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
 
   app:
     build:
       context: .
       dockerfile: compose/development/Dockerfile
     entrypoint: ./entrypoint.sh
-    container_name: app_dev
+    container_name: custos_app_dev
     volumes:
       - .:/app/
       - /var/run/docker.sock:/var/run/docker.sock
@@ -25,11 +53,18 @@ services:
       - SECRET_KEY=${SECRET_KEY}
       - ALGORITHM=${ALGORITHM}
       - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES}
+      - REDIS_URL=${REDIS_URL}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_FROM_EMAIL=${SMTP_FROM_EMAIL}
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     ports:
       - "8000:8000"
-      
+
     develop:
       watch:
         - action: rebuild
@@ -38,3 +73,53 @@ services:
           path: compose/development/Dockerfile
         - action: restart
           path: app/
+
+  celery-worker:
+    build:
+      context: .
+      dockerfile: compose/development/Dockerfile
+    container_name: custos_celery_worker_dev
+    command: uv run celery -A app.celery_app worker --loglevel=info
+    volumes:
+      - .:/app/
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_FROM_EMAIL=${SMTP_FROM_EMAIL}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery-beat:
+    build:
+      context: .
+      dockerfile: compose/development/Dockerfile
+    container_name: custos_celery_beat_dev
+    command: uv run celery -A app.celery_app beat --loglevel=info
+    volumes:
+      - .:/app/
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_FROM_EMAIL=${SMTP_FROM_EMAIL}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend:
+    image: node:20-alpine
+    container_name: custos_frontend_dev
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+    ports:
+      - "5173:5173"
+    command: sh -c "npm install && npm run dev -- --host"

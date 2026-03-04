@@ -1,31 +1,39 @@
 [project]
-name = "task-challenge"
+name = "gestor-de-custos"
 version = "0.1.0"
-description = "Add your description here"
+description = "Sistema de gestao de custos compartilhados"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "alembic>=1.16.2",
     "fastapi>=0.115.14",
     "httpx>=0.28.1",
-    "jinja2>=3.1.6",
-    "packaging>=25.0",
-    "pydantic-settings>=2.10.1",
+    "pydantic[email]>=2.10.1",
     "pytest>=8.4.1",
     "python-multipart>=0.0.20",
-    "sqlmodel>=0.0.24",
     "uvicorn>=0.34.3",
-    "psycopg2-binary>=2.9.10",
     "pwdlib[argon2]>=0.2.1",
     "pyjwt>=2.10.1",
+    # Async SQLAlchemy
+    "sqlalchemy[asyncio]>=2.0.0",
+    "asyncpg>=0.29.0",
+    # Celery
+    "celery[redis]>=5.3.0",
+    # Email
+    "aiosmtplib>=3.0.0",
+    "sqlmodel>=0.0.19",
 ]
+
 [tool.pytest.ini_options]
 testpaths = ["/app/tests"]
 pythonpath = "."
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 markers = [
-    "users: testes de users",
-    "todos: testes de todos",
-    "auth: testes de autenticação",
+    "tenant: testes de tenant",
+    "usuario: testes de usuario",
+    "custo: testes de custo",
+    "rateio: testes de rateio",
 ]
 
 [dependency-groups]
@@ -54,8 +62,10 @@ pre_format = 'uv run ruff check --fix'
 pre_test = 'task lint'
 revision = "docker compose -f docker-compose.yml exec app alembic revision --autogenerate -m"
 head = "docker compose -f docker-compose.yml exec app alembic upgrade head"
+migrate = "uv run alembic upgrade head"
 bash = "docker compose -f docker-compose.yml exec app bash"
 pysql = "docker exec -it db_dev psql -U user -d mydatabase"
+celery-logs = "docker compose -f docker-compose.yml logs -f celery-worker celery-beat"
 
 [tool.ruff.lint]
 ignore = ["F821", "PT019"]
