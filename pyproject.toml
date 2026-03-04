@@ -1,0 +1,61 @@
+[project]
+name = "task-challenge"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "alembic>=1.16.2",
+    "fastapi>=0.115.14",
+    "httpx>=0.28.1",
+    "jinja2>=3.1.6",
+    "packaging>=25.0",
+    "pydantic-settings>=2.10.1",
+    "pytest>=8.4.1",
+    "python-multipart>=0.0.20",
+    "sqlmodel>=0.0.24",
+    "uvicorn>=0.34.3",
+    "psycopg2-binary>=2.9.10",
+    "pwdlib[argon2]>=0.2.1",
+    "pyjwt>=2.10.1",
+]
+[tool.pytest.ini_options]
+testpaths = ["/app/tests"]
+pythonpath = "."
+markers = [
+    "users: testes de users",
+    "todos: testes de todos",
+    "auth: testes de autenticação",
+]
+
+[dependency-groups]
+dev = [
+    "freezegun>=1.5.2",
+    "pytest>=8.4.1",
+    "pytest-asyncio>=1.0.0",
+    "pytest-cov>=6.2.1",
+    "pytest-factoryboy>=2.7.0",
+    "ruff>=0.12.1",
+    "taskipy>=1.14.1",
+    "testcontainers>=4.10.0",
+]
+
+
+[tool.taskipy.tasks]
+up = "docker compose -f docker-compose.yml up -d"
+down = "docker compose -f docker-compose.yml down"
+logs = "docker compose -f docker-compose.yml logs -f"
+test = "uv run pytest"
+test-coverage = "uv run pytest --cov=app --cov-report=term-missing --cov-report=html --cov-fail-under=90"
+lint = "uv run ruff check app"
+format = 'uv run ruff format'
+format-check = "uv run ruff check --fix app"
+pre_format = 'uv run ruff check --fix'
+pre_test = 'task lint'
+revision = "docker compose -f docker-compose.yml exec app alembic revision --autogenerate -m"
+head = "docker compose -f docker-compose.yml exec app alembic upgrade head"
+bash = "docker compose -f docker-compose.yml exec app bash"
+pysql = "docker exec -it db_dev psql -U user -d mydatabase"
+
+[tool.ruff.lint]
+ignore = ["F821", "PT019"]
