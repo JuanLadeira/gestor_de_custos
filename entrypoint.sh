@@ -10,7 +10,7 @@ uv run python ./app/wait_for_db.py
 
 # Roda as migrações do banco de dados
 echo "Running database migrations..."
-uv run alembic upgrade head
+uv run task migrate
 
 # Inicia a aplicação
 echo "Starting application..."
