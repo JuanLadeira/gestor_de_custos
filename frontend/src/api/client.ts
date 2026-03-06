@@ -52,7 +52,7 @@ export interface Custo {
   valor: string
   data_vencimento: string
   tipo: 'FIXO' | 'VARIAVEL'
-  status: 'PENDENTE' | 'PAGO'
+  status: 'PENDENTE' | 'PARCIALMENTE_PAGO' | 'PAGO'
   mes_referencia_id: number
   custo_fixo_origem_id: number | null
 }
@@ -62,6 +62,7 @@ export interface PagamentoRateio {
   porcentagem: string
   valor_calculado: string
   status: 'PENDENTE' | 'PAGO'
+  comprovante_url: string | null
   custo_id: number
   usuario_id: number
 }
@@ -110,6 +111,13 @@ export const api = {
   updateRateio: (id: number, data: { porcentagem?: string; status?: string }) =>
     apiClient.put<PagamentoRateio>(`/rateios/${id}`, data),
   deleteRateio: (id: number) => apiClient.delete(`/rateios/${id}`),
+  uploadComprovante: (id: number, file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    return apiClient.post<PagamentoRateio>(`/rateios/${id}/comprovante`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
 }
 
 export default apiClient

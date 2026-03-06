@@ -1,7 +1,9 @@
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.admin import router as admin_router
 from app.assinatura import router as assinatura_router
@@ -19,6 +21,7 @@ from app.usuario import router as usuario_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    os.makedirs("/app/uploads/comprovantes", exist_ok=True)
     logger.info("Iniciando a aplicacao Gestor de Custos...")
     yield
     logger.info("Encerrando a aplicacao Gestor de Custos...")
@@ -56,6 +59,9 @@ app.include_router(mes_referencia_router.router)
 app.include_router(custo_fixo_router.router)
 app.include_router(custo_router.router)
 app.include_router(pagamento_rateio_router.router)
+
+
+app.mount("/uploads", StaticFiles(directory="/app/uploads"), name="uploads")
 
 
 @app.get("/health")
