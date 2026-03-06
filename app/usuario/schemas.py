@@ -2,6 +2,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr
 
+from app.usuario.models import UsuarioRole
+
 
 class UsuarioBase(BaseModel):
     username: str
@@ -12,6 +14,7 @@ class UsuarioBase(BaseModel):
 
 class UsuarioCreate(UsuarioBase):
     password: str
+    role: UsuarioRole = UsuarioRole.MEMBER
 
 
 class UsuarioUpdate(BaseModel):
@@ -20,6 +23,7 @@ class UsuarioUpdate(BaseModel):
     nome: str | None = None
     password: str | None = None
     ativo: bool | None = None
+    role: UsuarioRole | None = None
 
 
 class UsuarioPublic(BaseModel):
@@ -30,6 +34,7 @@ class UsuarioPublic(BaseModel):
     email: EmailStr
     nome: str
     ativo: bool
+    role: UsuarioRole
     tenant_id: int
     created_at: datetime
     updated_at: datetime

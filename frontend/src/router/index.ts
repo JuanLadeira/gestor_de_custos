@@ -1,18 +1,24 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { useAdminAuthStore } from '../stores/adminAuth'
 
 const router = createRouter({
   history: createWebHistory(),
   routes: [
     {
       path: '/',
-      name: 'home',
-      component: () => import('../views/HomeView.vue'),
+      name: 'landing',
+      component: () => import('../views/LandingView.vue'),
     },
     {
       path: '/login',
       name: 'login',
       component: () => import('../views/LoginView.vue'),
+    },
+    {
+      path: '/assinatura/sucesso',
+      name: 'assinatura-sucesso',
+      component: () => import('../views/AssinaturaSucessoView.vue'),
     },
     {
       path: '/custos',
@@ -26,13 +32,54 @@ const router = createRouter({
       component: () => import('../views/RateiosView.vue'),
       meta: { requiresAuth: true },
     },
+    {
+      path: '/membros',
+      name: 'membros',
+      component: () => import('../views/UsuariosView.vue'),
+      meta: { requiresAuth: true },
+    },
+    // Admin routes
+    {
+      path: '/admin/login',
+      name: 'admin-login',
+      component: () => import('../views/admin/AdminLoginView.vue'),
+    },
+    {
+      path: '/admin',
+      component: () => import('../views/admin/AdminLayoutView.vue'),
+      meta: { requiresAdmin: true },
+      children: [
+        {
+          path: '',
+          redirect: '/admin/tenants',
+        },
+        {
+          path: 'tenants',
+          name: 'admin-tenants',
+          component: () => import('../views/admin/AdminTenantsView.vue'),
+        },
+        {
+          path: 'planos',
+          name: 'admin-planos',
+          component: () => import('../views/admin/AdminPlanosView.vue'),
+        },
+        {
+          path: 'assinaturas',
+          name: 'admin-assinaturas',
+          component: () => import('../views/admin/AdminAssinaturasView.vue'),
+        },
+      ],
+    },
   ],
 })
 
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore()
+  const adminStore = useAdminAuthStore()
 
-  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+  if (to.meta.requiresAdmin && !adminStore.isAuthenticated) {
+    next('/admin/login')
+  } else if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     next('/login')
   } else {
     next()

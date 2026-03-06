@@ -25,3 +25,12 @@ class Settings(BaseSettings):
 
     # Notification settings
     DAYS_BEFORE_DUE_NOTIFICATION: int = 3
+
+    # Stripe
+    STRIPE_SECRET_KEY: str = ""
+    STRIPE_WEBHOOK_SECRET: str = ""
+    STRIPE_PUBLISHABLE_KEY: str = ""
+    FRONTEND_URL: str = "http://localhost:5173"
+
+    # Admin
+    ADMIN_SECRET_KEY: str | None = None

@@ -1,6 +1,7 @@
+import enum
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import Enum, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
@@ -8,6 +9,11 @@ from app.database.base import Base
 if TYPE_CHECKING:
     from app.pagamento_rateio.models import PagamentoRateio
     from app.tenant.models import Tenant
+
+
+class UsuarioRole(enum.Enum):
+    OWNER = "OWNER"
+    MEMBER = "MEMBER"
 
 
 class Usuario(Base):
@@ -24,6 +30,12 @@ class Usuario(Base):
     password: Mapped[str] = mapped_column(String(255), nullable=False)
     nome: Mapped[str] = mapped_column(String(100), nullable=False)
     ativo: Mapped[bool] = mapped_column(default=True, nullable=False)
+    role: Mapped[UsuarioRole] = mapped_column(
+        Enum(UsuarioRole, name="usuariorole"),
+        default=UsuarioRole.MEMBER,
+        server_default="MEMBER",
+        nullable=False,
+    )
 
     # Foreign key
     tenant_id: Mapped[int] = mapped_column(

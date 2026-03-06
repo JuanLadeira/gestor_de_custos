@@ -3,12 +3,16 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.admin import router as admin_router
+from app.assinatura import router as assinatura_router
 from app.auth import router as auth_router
 from app.custo import router as custo_router
 from app.custo_fixo import router as custo_fixo_router
 from app.logger import logger
 from app.mes_referencia import router as mes_referencia_router
 from app.pagamento_rateio import router as pagamento_rateio_router
+from app.plano import router as plano_router
+from app.stripe_webhooks import router as stripe_router
 from app.tenant import router as tenant_router
 from app.usuario import router as usuario_router
 
@@ -42,6 +46,10 @@ app.add_middleware(
 
 # Register routers
 app.include_router(auth_router.router)
+app.include_router(admin_router.router)
+app.include_router(plano_router.router)
+app.include_router(assinatura_router.router)
+app.include_router(stripe_router.router)
 app.include_router(tenant_router.router)
 app.include_router(usuario_router.router)
 app.include_router(mes_referencia_router.router)

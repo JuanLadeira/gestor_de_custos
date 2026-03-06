@@ -43,6 +43,7 @@ class UsuarioService:
             password=get_password_hash(data.password),
             nome=data.nome,
             tenant_id=data.tenant_id,
+            role=data.role,
         )
         self.session.add(usuario)
         await self.session.flush()

@@ -1,4 +1,3 @@
-from datetime import date
 from decimal import Decimal
 
 import pytest
@@ -167,7 +166,7 @@ class TestRateioValidation:
         )
         rateio1 = response1.json()
 
-        response2 = await client.post(
+        await client.post(
             "/api/rateios/",
             json={
                 "porcentagem": "50.00",

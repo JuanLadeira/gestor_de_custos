@@ -6,6 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database.base import Base
 
 if TYPE_CHECKING:
+    from app.assinatura.models import Assinatura
     from app.custo_fixo.models import CustoFixo
     from app.mes_referencia.models import MesReferencia
     from app.usuario.models import Usuario
@@ -31,6 +32,11 @@ class Tenant(Base):
         lazy="selectin",
     )
     custos_fixos: Mapped[list["CustoFixo"]] = relationship(
+        back_populates="tenant",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    assinaturas: Mapped[list["Assinatura"]] = relationship(
         back_populates="tenant",
         cascade="all, delete-orphan",
         lazy="selectin",

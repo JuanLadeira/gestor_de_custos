@@ -57,6 +57,11 @@ services:
       - SMTP_HOST=${SMTP_HOST}
       - SMTP_PORT=${SMTP_PORT}
       - SMTP_FROM_EMAIL=${SMTP_FROM_EMAIL}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}
+      - STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY:-}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:5173}
+      - ADMIN_SECRET_KEY=${ADMIN_SECRET_KEY:-}
     depends_on:
       db:
         condition: service_healthy
@@ -113,6 +118,17 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+
+  stripe-cli:
+    image: stripe/stripe-cli
+    container_name: custos_stripe_cli_dev
+    command: listen --forward-to http://app:8000/stripe/webhook
+    environment:
+      - STRIPE_API_KEY=${STRIPE_SECRET_KEY:-}
+    depends_on:
+      - app
+    profiles:
+      - stripe
 
   frontend:
     image: node:20-alpine

@@ -22,6 +22,8 @@ dependencies = [
     # Email
     "aiosmtplib>=3.0.0",
     "sqlmodel>=0.0.19",
+    "stripe>=12.0.0",
+    "pydantic-settings>=2.13.1",
 ]
 
 [tool.pytest.ini_options]
