@@ -44,6 +44,7 @@
             <th class="px-5 py-3.5 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">ID</th>
             <th class="px-5 py-3.5 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">Tenant</th>
             <th class="px-5 py-3.5 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">Plano</th>
+            <th class="px-5 py-3.5 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">Início</th>
             <th class="px-5 py-3.5 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">Status</th>
             <th class="px-5 py-3.5 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">Próx. cobrança</th>
             <th class="px-5 py-3.5 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">Stripe ID</th>
@@ -52,12 +53,15 @@
         </thead>
         <tbody class="divide-y divide-white/5">
           <tr v-if="assinaturas.length === 0">
-            <td colspan="7" class="px-5 py-12 text-center text-slate-500 text-sm">Nenhuma assinatura encontrada</td>
+            <td colspan="8" class="px-5 py-12 text-center text-slate-500 text-sm">Nenhuma assinatura encontrada</td>
           </tr>
           <tr v-for="ass in assinaturas" :key="ass.id" class="hover:bg-white/[0.02] transition-colors">
             <td class="px-5 py-3.5 text-slate-500 font-mono text-xs">{{ ass.id }}</td>
-            <td class="px-5 py-3.5 text-slate-300 font-mono text-xs">{{ ass.tenant_id }}</td>
-            <td class="px-5 py-3.5 text-slate-300 font-mono text-xs">{{ ass.plano_id }}</td>
+            <td class="px-5 py-3.5 text-slate-300 text-sm">{{ ass.tenant_nome ?? ass.tenant_id }}</td>
+            <td class="px-5 py-3.5 text-slate-400 text-sm">{{ ass.plano_nome ?? ass.plano_id }}</td>
+            <td class="px-5 py-3.5 text-slate-400">
+              {{ ass.data_inicio ? formatDate(ass.data_inicio) : '—' }}
+            </td>
             <td class="px-5 py-3.5">
               <span :class="statusChip(ass.status)" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ring-1">
                 <span :class="statusDot(ass.status)" class="w-1.5 h-1.5 rounded-full" />
@@ -96,8 +100,11 @@ interface Assinatura {
   id: number
   status: string
   tenant_id: number
+  tenant_nome: string
   plano_id: number
+  plano_nome: string
   stripe_subscription_id: string | null
+  data_inicio: string | null
   data_proxima_cobranca: string | null
 }
 

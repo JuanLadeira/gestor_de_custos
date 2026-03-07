@@ -20,6 +20,8 @@ from app.pagamento_rateio.models import PagamentoRateio  # noqa: F401
 from app.admin.models import Admin  # noqa: F401
 from app.plano.models import Plano  # noqa: F401
 from app.assinatura.models import Assinatura  # noqa: F401
+from app.whatsapp.models import WhatsappInstancia  # noqa: F401
+from app.campanha.models import Campanha, TemplateMensagem, ContatoCampanha, Conversa, MensagemConversa  # noqa: F401
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

@@ -4,13 +4,22 @@ from fastapi.security import OAuth2PasswordRequestForm
 from app.admin.current_admin import CurrentAdmin
 from app.admin.schemas import AdminCreate, AdminPublic, Token
 from app.admin.services import AdminServiceDep
-from app.assinatura.schemas import AssinaturaPublic, AssinaturaUpdate
+from app.whatsapp.schemas import InstanciaCreate, InstanciaPublic, InstanciaResumoStatus
+from app.whatsapp.services import WhatsappServiceDep
+from app.assinatura.schemas import (
+    AssinaturaAdminPublic,
+    AssinaturaCreate,
+    AssinaturaPublic,
+    AssinaturaUpdate,
+)
 from app.assinatura.services import AssinaturaServiceDep
 from app.auth.security import create_access_token, verify_password
 from app.plano.schemas import PlanoCreate, PlanoPublic, PlanoUpdate
 from app.plano.services import PlanoServiceDep
 from app.tenant.schemas import TenantCreate, TenantPublic, TenantUpdate
 from app.tenant.services import TenantServiceDep
+from app.usuario.schemas import UsuarioCreate, UsuarioCreateAdmin, UsuarioPublic, UsuarioUpdate
+from app.usuario.services import UsuarioServiceDep
 
 router = APIRouter(
     prefix="/admin",
@@ -100,11 +109,91 @@ async def delete_plano(plano_id: int, _: CurrentAdmin, service: PlanoServiceDep)
         raise HTTPException(status_code=404, detail="Plano não encontrado")
 
 
+# ─── Tenant → Usuários ────────────────────────────────────────────────────────
+
+@router.get("/tenants/{tenant_id}/usuarios", response_model=list[UsuarioPublic])
+async def list_tenant_usuarios(
+    tenant_id: int, _: CurrentAdmin, service: UsuarioServiceDep
+):
+    return await service.get_all(tenant_id=tenant_id)
+
+
+@router.post(
+    "/tenants/{tenant_id}/usuarios",
+    response_model=UsuarioPublic,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_tenant_usuario(
+    tenant_id: int,
+    data: UsuarioCreateAdmin,
+    _: CurrentAdmin,
+    service: UsuarioServiceDep,
+):
+    existing = await service.get_by_username(data.username)
+    if existing:
+        raise HTTPException(status_code=400, detail="Username já existe")
+    create_data = UsuarioCreate(tenant_id=tenant_id, **data.model_dump())
+    return await service.create(create_data)
+
+
+@router.put("/usuarios/{usuario_id}", response_model=UsuarioPublic)
+async def update_usuario(
+    usuario_id: int, data: UsuarioUpdate, _: CurrentAdmin, service: UsuarioServiceDep
+):
+    usuario = await service.update(usuario_id, data)
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    return usuario
+
+
+@router.delete("/usuarios/{usuario_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_usuario(usuario_id: int, _: CurrentAdmin, service: UsuarioServiceDep):
+    deleted = await service.delete(usuario_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+
+
+# ─── Tenant → Assinatura ──────────────────────────────────────────────────────
+
+@router.get("/tenants/{tenant_id}/assinatura", response_model=AssinaturaPublic | None)
+async def get_tenant_assinatura(
+    tenant_id: int, _: CurrentAdmin, service: AssinaturaServiceDep
+):
+    return await service.get_by_tenant(tenant_id)
+
+
+@router.post(
+    "/tenants/{tenant_id}/assinatura",
+    response_model=AssinaturaPublic,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_tenant_assinatura(
+    tenant_id: int,
+    data: AssinaturaCreate,
+    _: CurrentAdmin,
+    service: AssinaturaServiceDep,
+):
+    existing = await service.get_by_tenant(tenant_id)
+    if existing:
+        raise HTTPException(status_code=400, detail="Tenant já possui assinatura")
+    return await service.create(
+        tenant_id=tenant_id, plano_id=data.plano_id, status=data.status
+    )
+
+
 # ─── Assinaturas ──────────────────────────────────────────────────────────────
 
-@router.get("/assinaturas", response_model=list[AssinaturaPublic])
+@router.get("/assinaturas", response_model=list[AssinaturaAdminPublic])
 async def list_assinaturas(_: CurrentAdmin, service: AssinaturaServiceDep):
-    return await service.get_all()
+    assinaturas = await service.get_all_admin()
+    return [
+        AssinaturaAdminPublic(
+            **AssinaturaPublic.model_validate(a).model_dump(),
+            tenant_nome=a.tenant.nome,
+            plano_nome=a.plano.nome,
+        )
+        for a in assinaturas
+    ]
 
 
 @router.put("/assinaturas/{assinatura_id}", response_model=AssinaturaPublic)
@@ -118,6 +207,61 @@ async def update_assinatura(
     if not assinatura:
         raise HTTPException(status_code=404, detail="Assinatura não encontrada")
     return assinatura
+
+
+# ─── WhatsApp ─────────────────────────────────────────────────────────────────
+
+@router.get("/whatsapp/instancias", response_model=list[InstanciaPublic])
+async def list_all_instancias(_: CurrentAdmin, service: WhatsappServiceDep):
+    return await service.listar_todas_instancias()
+
+
+@router.get("/whatsapp/instancias/resumo", response_model=InstanciaResumoStatus)
+async def resumo_instancias(_: CurrentAdmin, service: WhatsappServiceDep):
+    return await service.resumo_status()
+
+
+@router.get(
+    "/whatsapp/instancias/{instancia_id}/status", response_model=InstanciaPublic
+)
+async def sincronizar_instancia_status(
+    instancia_id: int, _: CurrentAdmin, service: WhatsappServiceDep
+):
+    instancia = await service.obter_instancia_por_id(instancia_id)
+    if not instancia:
+        raise HTTPException(status_code=404, detail="Instância não encontrada")
+    return await service.sincronizar_status(instancia)
+
+
+@router.get("/tenants/{tenant_id}/whatsapp", response_model=list[InstanciaPublic])
+async def list_tenant_instancias(
+    tenant_id: int, _: CurrentAdmin, service: WhatsappServiceDep
+):
+    return await service.listar_instancias(tenant_id)
+
+
+@router.post(
+    "/tenants/{tenant_id}/whatsapp",
+    response_model=InstanciaPublic,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_tenant_instancia(
+    tenant_id: int,
+    data: InstanciaCreate,
+    _: CurrentAdmin,
+    service: WhatsappServiceDep,
+):
+    return await service.criar_instancia(tenant_id, data)
+
+
+@router.delete("/whatsapp/instancias/{instancia_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_instancia(
+    instancia_id: int, _: CurrentAdmin, service: WhatsappServiceDep
+):
+    instancia = await service.obter_instancia_por_id(instancia_id)
+    if not instancia:
+        raise HTTPException(status_code=404, detail="Instância não encontrada")
+    await service.deletar_instancia(instancia)
 
 
 # ─── Admin management (bootstrap) ────────────────────────────────────────────

@@ -63,6 +63,8 @@ services:
       - STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY:-}
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:5173}
       - ADMIN_SECRET_KEY=${ADMIN_SECRET_KEY:-}
+      - EVOLUTION_API_URL=${EVOLUTION_API_URL:-http://evolution-api:8080}
+      - EVOLUTION_API_KEY=${EVOLUTION_API_KEY:-evolution-dev-key}
     depends_on:
       db:
         condition: service_healthy
@@ -120,6 +122,41 @@ services:
       redis:
         condition: service_healthy
 
+  evolution-api:
+    image: atendai/evolution-api:v2.2.3
+    container_name: custos_evolution_api_dev
+    ports:
+      - "8080:8080"
+    environment:
+      - SERVER_URL=http://localhost:8080
+      - DATABASE_PROVIDER=postgresql
+      - DATABASE_CONNECTION_URI=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      - DATABASE_SAVE_DATA_INSTANCE=true
+      - DATABASE_SAVE_DATA_NEW_MESSAGE=true
+      - DATABASE_SAVE_MESSAGE_UPDATE=true
+      - DATABASE_SAVE_DATA_CONTACTS=true
+      - DATABASE_SAVE_DATA_CHATS=true
+      - DATABASE_SAVE_DATA_LABELS=true
+      - DATABASE_SAVE_DATA_HISTORIC=true
+      - CACHE_REDIS_ENABLED=true
+      - CACHE_REDIS_URI=redis://redis:6379/1
+      - CACHE_REDIS_PREFIX_KEY=evolution
+      - CACHE_REDIS_SAVE_INSTANCES=false
+      - CACHE_LOCAL_ENABLED=false
+      - AUTHENTICATION_TYPE=apikey
+      - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY:-evolution-dev-key}
+      - QRCODE_LIMIT=30
+      - LANGUAGE=pt-BR
+    volumes:
+      - ./.evolution-data:/evolution/instances
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    profiles:
+      - whatsapp
+
   stripe-cli:
     image: stripe/stripe-cli
     container_name: custos_stripe_cli_dev
@@ -140,3 +177,16 @@ services:
     ports:
       - "5173:5173"
     command: sh -c "npm install && npm run dev -- --host"
+
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: custos_ngrok_dev
+    command: http frontend:5173 --log stdout --request-header-add "ngrok-skip-browser-warning:true"
+    environment:
+      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+    ports:
+      - "4040:4040"
+    depends_on:
+      - frontend
+    profiles:
+      - ngrok

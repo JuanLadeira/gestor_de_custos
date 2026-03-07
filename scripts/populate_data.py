@@ -127,54 +127,22 @@ async def criar_planos(session: AsyncSession) -> dict[str, Plano]:
     return planos
 
 
-async def criar_tenant_casa_verde(
+async def criar_tenant_juan(
     session: AsyncSession, planos: dict[str, Plano]
 ) -> None:
-    # --- Tenant ---
-    tenant = Tenant(nome="Casa Verde", descricao="Apartamento compartilhado - 3 moradores")
+    tenant = Tenant(nome="Casa do Juan", descricao="Apartamento compartilhado - 3 moradores")
     session.add(tenant)
     await session.flush()
 
-    # --- Usuarios ---
-    juan = Usuario(
-        username="juan",
-        email="juan@casaverde.com",
-        password=senha(),
-        nome="Juan Silva",
-        role=UsuarioRole.OWNER,
-        tenant_id=tenant.id,
-    )
-    pedro = Usuario(
-        username="pedro",
-        email="pedro@casaverde.com",
-        password=senha(),
-        nome="Pedro Souza",
-        role=UsuarioRole.MEMBER,
-        tenant_id=tenant.id,
-    )
-    maria = Usuario(
-        username="maria",
-        email="maria@casaverde.com",
-        password=senha(),
-        nome="Maria Oliveira",
-        role=UsuarioRole.MEMBER,
-        tenant_id=tenant.id,
-    )
+    juan = Usuario(username="juan", email="juan@demo.com", password=senha(), nome="Juan Silva", role=UsuarioRole.OWNER, tenant_id=tenant.id)
+    pedro = Usuario(username="pedro", email="pedro@demo.com", password=senha(), nome="Pedro Souza", role=UsuarioRole.MEMBER, tenant_id=tenant.id)
+    maria = Usuario(username="maria", email="maria@demo.com", password=senha(), nome="Maria Oliveira", role=UsuarioRole.MEMBER, tenant_id=tenant.id)
     session.add_all([juan, pedro, maria])
     await session.flush()
 
-    # --- Assinatura ---
-    assinatura = Assinatura(
-        tenant_id=tenant.id,
-        plano_id=planos["Pro"].id,
-        status=AssinaturaStatus.ATIVA,
-        data_inicio=dt(2026, 1, 1),
-        data_proxima_cobranca=dt(2026, 4, 1),
-    )
-    session.add(assinatura)
+    session.add(Assinatura(tenant_id=tenant.id, plano_id=planos["Pro"].id, status=AssinaturaStatus.ATIVA, data_inicio=dt(2026, 1, 1), data_proxima_cobranca=dt(2026, 4, 1)))
     await session.flush()
 
-    # --- Custos Fixos ---
     cf_aluguel = CustoFixo(tenant_id=tenant.id, descricao="Aluguel", valor=Decimal("2500.00"), dia_vencimento=5, ativo=True)
     cf_internet = CustoFixo(tenant_id=tenant.id, descricao="Internet", valor=Decimal("120.00"), dia_vencimento=10, ativo=True)
     cf_energia = CustoFixo(tenant_id=tenant.id, descricao="Energia Elétrica", valor=Decimal("350.00"), dia_vencimento=15, ativo=True)
@@ -182,18 +150,12 @@ async def criar_tenant_casa_verde(
     session.add_all([cf_aluguel, cf_internet, cf_energia, cf_agua])
     await session.flush()
 
-    # Rateio base: juan 40%, pedro 35%, maria 25%
-    rateio = [
-        (juan, Decimal("40.00")),
-        (pedro, Decimal("35.00")),
-        (maria, Decimal("25.00")),
-    ]
+    rateio = [(juan, Decimal("40.00")), (pedro, Decimal("35.00")), (maria, Decimal("25.00"))]
 
-    # --- Mês Jan/2026 — FECHADO (tudo pago) ---
+    # Jan/2026 — FECHADO, tudo pago
     mes_jan = MesReferencia(tenant_id=tenant.id, ano=2026, mes=1, status=StatusMes.FECHADO)
     session.add(mes_jan)
     await session.flush()
-
     custos_jan = [
         Custo(descricao="Aluguel", valor=Decimal("2500.00"), data_vencimento=date(2026, 1, 5), tipo=TipoCusto.FIXO, status=StatusPagamento.PAGO, mes_referencia_id=mes_jan.id, custo_fixo_origem_id=cf_aluguel.id),
         Custo(descricao="Internet", valor=Decimal("120.00"), data_vencimento=date(2026, 1, 10), tipo=TipoCusto.FIXO, status=StatusPagamento.PAGO, mes_referencia_id=mes_jan.id, custo_fixo_origem_id=cf_internet.id),
@@ -203,24 +165,15 @@ async def criar_tenant_casa_verde(
     ]
     session.add_all(custos_jan)
     await session.flush()
-
     for custo in custos_jan:
-        for usuario, pct in rateio:
-            pr = PagamentoRateio(
-                custo_id=custo.id,
-                usuario_id=usuario.id,
-                porcentagem=pct,
-                valor_calculado=(custo.valor * pct / 100).quantize(Decimal("0.01")),
-                status=StatusRateio.PAGO,
-            )
-            session.add(pr)
+        for u, pct in rateio:
+            session.add(PagamentoRateio(custo_id=custo.id, usuario_id=u.id, porcentagem=pct, valor_calculado=(custo.valor * pct / 100).quantize(Decimal("0.01")), status=StatusRateio.PAGO))
     await session.flush()
 
-    # --- Mês Fev/2026 — FECHADO (misturado: fixos pagos, variável pendente) ---
+    # Fev/2026 — FECHADO, fixos pagos / variável pendente
     mes_fev = MesReferencia(tenant_id=tenant.id, ano=2026, mes=2, status=StatusMes.FECHADO)
     session.add(mes_fev)
     await session.flush()
-
     custos_fev = [
         Custo(descricao="Aluguel", valor=Decimal("2500.00"), data_vencimento=date(2026, 2, 5), tipo=TipoCusto.FIXO, status=StatusPagamento.PAGO, mes_referencia_id=mes_fev.id, custo_fixo_origem_id=cf_aluguel.id),
         Custo(descricao="Internet", valor=Decimal("120.00"), data_vencimento=date(2026, 2, 10), tipo=TipoCusto.FIXO, status=StatusPagamento.PAGO, mes_referencia_id=mes_fev.id, custo_fixo_origem_id=cf_internet.id),
@@ -230,25 +183,15 @@ async def criar_tenant_casa_verde(
     ]
     session.add_all(custos_fev)
     await session.flush()
-
-    status_fev = [StatusRateio.PAGO, StatusRateio.PAGO, StatusRateio.PAGO, StatusRateio.PAGO, StatusRateio.PENDENTE]
-    for custo, st in zip(custos_fev, status_fev):
-        for usuario, pct in rateio:
-            pr = PagamentoRateio(
-                custo_id=custo.id,
-                usuario_id=usuario.id,
-                porcentagem=pct,
-                valor_calculado=(custo.valor * pct / 100).quantize(Decimal("0.01")),
-                status=st,
-            )
-            session.add(pr)
+    for custo, st in zip(custos_fev, [StatusRateio.PAGO]*4 + [StatusRateio.PENDENTE]):
+        for u, pct in rateio:
+            session.add(PagamentoRateio(custo_id=custo.id, usuario_id=u.id, porcentagem=pct, valor_calculado=(custo.valor * pct / 100).quantize(Decimal("0.01")), status=st))
     await session.flush()
 
-    # --- Mês Mar/2026 — ABERTO (tudo pendente) ---
+    # Mar/2026 — ABERTO, tudo pendente
     mes_mar = MesReferencia(tenant_id=tenant.id, ano=2026, mes=3, status=StatusMes.ABERTO)
     session.add(mes_mar)
     await session.flush()
-
     custos_mar = [
         Custo(descricao="Aluguel", valor=Decimal("2500.00"), data_vencimento=date(2026, 3, 5), tipo=TipoCusto.FIXO, status=StatusPagamento.PENDENTE, mes_referencia_id=mes_mar.id, custo_fixo_origem_id=cf_aluguel.id),
         Custo(descricao="Internet", valor=Decimal("120.00"), data_vencimento=date(2026, 3, 10), tipo=TipoCusto.FIXO, status=StatusPagamento.PENDENTE, mes_referencia_id=mes_mar.id, custo_fixo_origem_id=cf_internet.id),
@@ -258,17 +201,9 @@ async def criar_tenant_casa_verde(
     ]
     session.add_all(custos_mar)
     await session.flush()
-
     for custo in custos_mar:
-        for usuario, pct in rateio:
-            pr = PagamentoRateio(
-                custo_id=custo.id,
-                usuario_id=usuario.id,
-                porcentagem=pct,
-                valor_calculado=(custo.valor * pct / 100).quantize(Decimal("0.01")),
-                status=StatusRateio.PENDENTE,
-            )
-            session.add(pr)
+        for u, pct in rateio:
+            session.add(PagamentoRateio(custo_id=custo.id, usuario_id=u.id, porcentagem=pct, valor_calculado=(custo.valor * pct / 100).quantize(Decimal("0.01")), status=StatusRateio.PENDENTE))
     await session.flush()
 
     print(f"🏠 Tenant criado: {tenant.nome}")
@@ -277,108 +212,62 @@ async def criar_tenant_casa_verde(
     print(f"   Meses: Jan/2026 (FECHADO), Fev/2026 (FECHADO), Mar/2026 (ABERTO)")
 
 
-async def criar_tenant_apt302(
+async def criar_tenant_luana(
     session: AsyncSession, planos: dict[str, Plano]
 ) -> None:
-    # --- Tenant ---
-    tenant = Tenant(nome="Apt 302", descricao="Apartamento 2 quartos - 2 moradores")
+    tenant = Tenant(nome="Casa da Luana", descricao="Apartamento compartilhado - 2 moradores")
     session.add(tenant)
     await session.flush()
 
-    # --- Usuarios ---
-    carlos = Usuario(
-        username="carlos",
-        email="carlos@apt302.com",
-        password=senha(),
-        nome="Carlos Mendes",
-        role=UsuarioRole.OWNER,
-        tenant_id=tenant.id,
-    )
-    ana = Usuario(
-        username="ana",
-        email="ana@apt302.com",
-        password=senha(),
-        nome="Ana Costa",
-        role=UsuarioRole.MEMBER,
-        tenant_id=tenant.id,
-    )
-    session.add_all([carlos, ana])
+    luana = Usuario(username="luana", email="luana@demo.com", password=senha(), nome="Luana Costa", role=UsuarioRole.OWNER, tenant_id=tenant.id)
+    carlos = Usuario(username="carlos", email="carlos@demo.com", password=senha(), nome="Carlos Mendes", role=UsuarioRole.MEMBER, tenant_id=tenant.id)
+    session.add_all([luana, carlos])
     await session.flush()
 
-    # --- Assinatura ---
-    assinatura = Assinatura(
-        tenant_id=tenant.id,
-        plano_id=planos["Básico"].id,
-        status=AssinaturaStatus.ATIVA,
-        data_inicio=dt(2026, 2, 1),
-        data_proxima_cobranca=dt(2026, 4, 1),
-    )
-    session.add(assinatura)
+    session.add(Assinatura(tenant_id=tenant.id, plano_id=planos["Básico"].id, status=AssinaturaStatus.ATIVA, data_inicio=dt(2026, 2, 1), data_proxima_cobranca=dt(2026, 4, 1)))
     await session.flush()
 
-    # --- Custos Fixos ---
-    cf_cond = CustoFixo(tenant_id=tenant.id, descricao="Condomínio", valor=Decimal("800.00"), dia_vencimento=10, ativo=True)
-    cf_net = CustoFixo(tenant_id=tenant.id, descricao="Internet", valor=Decimal("100.00"), dia_vencimento=15, ativo=True)
-    session.add_all([cf_cond, cf_net])
+    cf_cond = CustoFixo(tenant_id=tenant.id, descricao="Condomínio", valor=Decimal("900.00"), dia_vencimento=10, ativo=True)
+    cf_internet = CustoFixo(tenant_id=tenant.id, descricao="Internet", valor=Decimal("100.00"), dia_vencimento=15, ativo=True)
+    session.add_all([cf_cond, cf_internet])
     await session.flush()
 
-    # Rateio: carlos 50%, ana 50%
-    rateio = [
-        (carlos, Decimal("50.00")),
-        (ana, Decimal("50.00")),
-    ]
+    rateio = [(luana, Decimal("50.00")), (carlos, Decimal("50.00"))]
 
-    # --- Mês Fev/2026 — FECHADO ---
+    # Fev/2026 — FECHADO, tudo pago
     mes_fev = MesReferencia(tenant_id=tenant.id, ano=2026, mes=2, status=StatusMes.FECHADO)
     session.add(mes_fev)
     await session.flush()
-
     custos_fev = [
-        Custo(descricao="Condomínio", valor=Decimal("800.00"), data_vencimento=date(2026, 2, 10), tipo=TipoCusto.FIXO, status=StatusPagamento.PAGO, mes_referencia_id=mes_fev.id, custo_fixo_origem_id=cf_cond.id),
-        Custo(descricao="Internet", valor=Decimal("100.00"), data_vencimento=date(2026, 2, 15), tipo=TipoCusto.FIXO, status=StatusPagamento.PAGO, mes_referencia_id=mes_fev.id, custo_fixo_origem_id=cf_net.id),
+        Custo(descricao="Condomínio", valor=Decimal("900.00"), data_vencimento=date(2026, 2, 10), tipo=TipoCusto.FIXO, status=StatusPagamento.PAGO, mes_referencia_id=mes_fev.id, custo_fixo_origem_id=cf_cond.id),
+        Custo(descricao="Internet", valor=Decimal("100.00"), data_vencimento=date(2026, 2, 15), tipo=TipoCusto.FIXO, status=StatusPagamento.PAGO, mes_referencia_id=mes_fev.id, custo_fixo_origem_id=cf_internet.id),
+        Custo(descricao="Supermercado", valor=Decimal("420.00"), data_vencimento=date(2026, 2, 20), tipo=TipoCusto.VARIAVEL, status=StatusPagamento.PAGO, mes_referencia_id=mes_fev.id),
     ]
     session.add_all(custos_fev)
     await session.flush()
-
     for custo in custos_fev:
-        for usuario, pct in rateio:
-            pr = PagamentoRateio(
-                custo_id=custo.id,
-                usuario_id=usuario.id,
-                porcentagem=pct,
-                valor_calculado=(custo.valor * pct / 100).quantize(Decimal("0.01")),
-                status=StatusRateio.PAGO,
-            )
-            session.add(pr)
+        for u, pct in rateio:
+            session.add(PagamentoRateio(custo_id=custo.id, usuario_id=u.id, porcentagem=pct, valor_calculado=(custo.valor * pct / 100).quantize(Decimal("0.01")), status=StatusRateio.PAGO))
     await session.flush()
 
-    # --- Mês Mar/2026 — ABERTO ---
+    # Mar/2026 — ABERTO, tudo pendente
     mes_mar = MesReferencia(tenant_id=tenant.id, ano=2026, mes=3, status=StatusMes.ABERTO)
     session.add(mes_mar)
     await session.flush()
-
     custos_mar = [
-        Custo(descricao="Condomínio", valor=Decimal("800.00"), data_vencimento=date(2026, 3, 10), tipo=TipoCusto.FIXO, status=StatusPagamento.PENDENTE, mes_referencia_id=mes_mar.id, custo_fixo_origem_id=cf_cond.id),
-        Custo(descricao="Internet", valor=Decimal("100.00"), data_vencimento=date(2026, 3, 15), tipo=TipoCusto.FIXO, status=StatusPagamento.PENDENTE, mes_referencia_id=mes_mar.id, custo_fixo_origem_id=cf_net.id),
+        Custo(descricao="Condomínio", valor=Decimal("900.00"), data_vencimento=date(2026, 3, 10), tipo=TipoCusto.FIXO, status=StatusPagamento.PENDENTE, mes_referencia_id=mes_mar.id, custo_fixo_origem_id=cf_cond.id),
+        Custo(descricao="Internet", valor=Decimal("100.00"), data_vencimento=date(2026, 3, 15), tipo=TipoCusto.FIXO, status=StatusPagamento.PENDENTE, mes_referencia_id=mes_mar.id, custo_fixo_origem_id=cf_internet.id),
         Custo(descricao="Limpeza", valor=Decimal("150.00"), data_vencimento=date(2026, 3, 18), tipo=TipoCusto.VARIAVEL, status=StatusPagamento.PENDENTE, mes_referencia_id=mes_mar.id),
     ]
     session.add_all(custos_mar)
     await session.flush()
-
     for custo in custos_mar:
-        for usuario, pct in rateio:
-            pr = PagamentoRateio(
-                custo_id=custo.id,
-                usuario_id=usuario.id,
-                porcentagem=pct,
-                valor_calculado=(custo.valor * pct / 100).quantize(Decimal("0.01")),
-                status=StatusRateio.PENDENTE,
-            )
-            session.add(pr)
+        for u, pct in rateio:
+            session.add(PagamentoRateio(custo_id=custo.id, usuario_id=u.id, porcentagem=pct, valor_calculado=(custo.valor * pct / 100).quantize(Decimal("0.01")), status=StatusRateio.PENDENTE))
     await session.flush()
 
     print(f"🏠 Tenant criado: {tenant.nome}")
-    print(f"   Usuários: carlos (OWNER), ana (MEMBER)  — senha: {SENHA_PADRAO}")
+    print(f"   Usuários: luana (OWNER), carlos (MEMBER)  — senha: {SENHA_PADRAO}")
     print(f"   Assinatura: Básico (ATIVA)")
     print(f"   Meses: Fev/2026 (FECHADO), Mar/2026 (ABERTO)")
 
@@ -406,9 +295,9 @@ async def main() -> None:
             print()
 
             print("🏘️  Criando tenants...")
-            await criar_tenant_casa_verde(session, planos)
+            await criar_tenant_juan(session, planos)
             print()
-            await criar_tenant_apt302(session, planos)
+            await criar_tenant_luana(session, planos)
             print()
 
     print("=" * 55)
@@ -419,11 +308,11 @@ async def main() -> None:
     print("  Admin panel  → /admin/login")
     print("  username: admin    senha: admin")
     print()
-    print("  App (Casa Verde):")
-    print("  juan / pedro / maria  →  senha: senha123")
+    print("  App (Casa do Juan):")
+    print(f"  juan / pedro / maria  →  senha: {SENHA_PADRAO}")
     print()
-    print("  App (Apt 302):")
-    print("  carlos / ana         →  senha: senha123")
+    print("  App (Casa da Luana):")
+    print(f"  luana / carlos        →  senha: {SENHA_PADRAO}")
     print("=" * 55)
 
 

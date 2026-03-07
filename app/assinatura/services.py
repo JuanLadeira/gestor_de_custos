@@ -4,6 +4,7 @@ from typing import Annotated
 from fastapi import Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.assinatura.models import Assinatura, AssinaturaStatus
 from app.assinatura.schemas import AssinaturaUpdate
@@ -16,6 +17,14 @@ class AssinaturaService:
 
     async def get_all(self) -> list[Assinatura]:
         result = await self.session.execute(select(Assinatura).order_by(Assinatura.id))
+        return list(result.scalars().all())
+
+    async def get_all_admin(self) -> list[Assinatura]:
+        result = await self.session.execute(
+            select(Assinatura)
+            .options(selectinload(Assinatura.tenant), selectinload(Assinatura.plano))
+            .order_by(Assinatura.id)
+        )
         return list(result.scalars().all())
 
     async def get_by_id(self, assinatura_id: int) -> Assinatura | None:

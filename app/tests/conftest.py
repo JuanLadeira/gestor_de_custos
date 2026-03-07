@@ -9,6 +9,7 @@ from app.database.session import get_async_session
 from app.main import app
 from app.tests.factories.tenant import TenantFactory
 from app.tests.factories.usuario import UsuarioFactory
+from app.tests.factories.whatsapp_instancia import WhatsappInstanciaFactory
 
 
 @pytest.fixture(scope="function")
@@ -112,3 +113,10 @@ async def token(client, usuario):
 def auth_headers(token):
     """Get authorization headers for authenticated requests."""
     return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+def whatsapp_instancia_factory(session) -> type[WhatsappInstanciaFactory]:
+    """Fixture that provides WhatsappInstanciaFactory configured with the test session."""
+    WhatsappInstanciaFactory._meta.sqlalchemy_session = session
+    return WhatsappInstanciaFactory

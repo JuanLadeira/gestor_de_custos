@@ -307,7 +307,7 @@
                 <!-- Ver comprovante -->
                 <button
                   v-if="r.comprovante_url"
-                  @click="window.open(r.comprovante_url, '_blank')"
+                  @click="verComprovante(r.comprovante_url!)"
                   title="Ver comprovante"
                   style="background:none;border:none;cursor:pointer;padding:4px;color:#0ea5e9;display:flex;border-radius:5px;"
                 >
@@ -576,6 +576,10 @@ async function onUploadComprovante(r: PagamentoRateio, event: Event) {
   } finally {
     input.value = ''
   }
+}
+
+function verComprovante(url: string) {
+  window.open(url, '_blank')
 }
 
 async function sincronizarStatusCusto() {

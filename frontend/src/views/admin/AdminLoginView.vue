@@ -1,60 +1,117 @@
 <template>
-  <div class="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-    <div class="w-full max-w-sm">
-      <div class="flex items-center gap-2.5 justify-center mb-8">
-        <div class="w-9 h-9 bg-violet-500 rounded-xl flex items-center justify-center">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="white" class="w-5 h-5">
+  <div style="min-height:100vh;display:flex;font-family:'Inter',sans-serif;">
+
+    <!-- Painel esquerdo (decorativo) -->
+    <div style="display:none;width:50%;background:#0c0a1e;flex-direction:column;justify-content:space-between;padding:48px;" class="lg-flex">
+      <!-- Logo -->
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="width:36px;height:36px;background:#7c3aed;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="white" style="width:18px;height:18px;">
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
           </svg>
         </div>
-        <div>
-          <p class="text-white text-sm font-semibold leading-none">Admin Panel</p>
-          <p class="text-slate-500 text-xs mt-0.5">Acesso restrito</p>
-        </div>
+        <span style="color:white;font-weight:600;font-size:15px;">Admin Panel</span>
       </div>
 
-      <div class="bg-slate-900 rounded-2xl border border-white/5 p-7">
-        <form @submit.prevent="handleLogin" class="space-y-4">
-          <div v-if="error" class="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-red-400 shrink-0">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-            </svg>
-            <p class="text-sm text-red-400">{{ error }}</p>
-          </div>
+      <!-- Quote + stats -->
+      <div>
+        <div style="width:200px;height:200px;background:rgba(124,58,237,0.15);border-radius:50%;filter:blur(60px);margin-bottom:32px;"></div>
 
+        <p style="color:#94a3b8;font-size:20px;line-height:1.6;font-weight:300;margin:0 0 40px;">
+          "Gerencie tenants, planos e assinaturas com controle total sobre a plataforma."
+        </p>
+
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0;border:1px solid rgba(255,255,255,0.06);border-radius:14px;overflow:hidden;">
+          <div style="background:rgba(255,255,255,0.03);padding:18px;text-align:center;border-right:1px solid rgba(255,255,255,0.06);">
+            <p style="font-size:24px;font-weight:700;color:white;margin:0;">∞</p>
+            <p style="font-size:11px;color:#475569;margin:4px 0 0;">tenants</p>
+          </div>
+          <div style="background:rgba(255,255,255,0.03);padding:18px;text-align:center;border-right:1px solid rgba(255,255,255,0.06);">
+            <p style="font-size:24px;font-weight:700;color:white;margin:0;">100%</p>
+            <p style="font-size:11px;color:#475569;margin:4px 0 0;">controle</p>
+          </div>
+          <div style="background:rgba(255,255,255,0.03);padding:18px;text-align:center;">
+            <p style="font-size:24px;font-weight:700;color:white;margin:0;">24/7</p>
+            <p style="font-size:11px;color:#475569;margin:4px 0 0;">acesso</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Painel direito (formulário) -->
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;background:white;">
+      <div style="width:100%;max-width:360px;">
+
+        <!-- Logo mobile -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:40px;" class="hide-on-large">
+          <div style="width:32px;height:32px;background:#7c3aed;border-radius:9px;display:flex;align-items:center;justify-content:center;">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="white" style="width:16px;height:16px;">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+            </svg>
+          </div>
+          <span style="font-weight:600;color:#0f172a;font-size:14px;">Admin Panel</span>
+        </div>
+
+        <h1 style="font-size:24px;font-weight:700;color:#0f172a;margin:0 0 6px;">Acesso administrativo</h1>
+        <p style="font-size:14px;color:#64748b;margin:0 0 32px;">Área restrita. Apenas administradores.</p>
+
+        <!-- Erro -->
+        <div v-if="error" style="display:flex;align-items:flex-start;gap:10px;background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:12px 14px;margin-bottom:20px;">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="#ef4444" style="width:16px;height:16px;flex-shrink:0;margin-top:1px;">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+          </svg>
+          <p style="font-size:13px;color:#b91c1c;margin:0;">{{ error }}</p>
+        </div>
+
+        <form @submit.prevent="handleLogin" style="display:flex;flex-direction:column;gap:18px;">
           <div>
-            <label class="block text-xs font-medium text-slate-400 mb-1.5">Usuário</label>
+            <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:7px;letter-spacing:0.01em;">Usuário</label>
             <input
               v-model="username"
               type="text"
               required
-              class="w-full bg-slate-800 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+              autocomplete="username"
+              placeholder="admin"
+              style="width:100%;border:1.5px solid #e5e7eb;border-radius:10px;padding:11px 14px;font-size:14px;color:#111827;background:white;outline:none;transition:border-color 0.15s;box-sizing:border-box;"
+              @focus="e => (e.target as HTMLInputElement).style.borderColor='#7c3aed'"
+              @blur="e => (e.target as HTMLInputElement).style.borderColor='#e5e7eb'"
             />
           </div>
 
           <div>
-            <label class="block text-xs font-medium text-slate-400 mb-1.5">Senha</label>
+            <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:7px;letter-spacing:0.01em;">Senha</label>
             <input
               v-model="password"
               type="password"
               required
+              autocomplete="current-password"
               placeholder="••••••••"
-              class="w-full bg-slate-800 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+              style="width:100%;border:1.5px solid #e5e7eb;border-radius:10px;padding:11px 14px;font-size:14px;color:#111827;background:white;outline:none;transition:border-color 0.15s;box-sizing:border-box;"
+              @focus="e => (e.target as HTMLInputElement).style.borderColor='#7c3aed'"
+              @blur="e => (e.target as HTMLInputElement).style.borderColor='#e5e7eb'"
             />
           </div>
 
           <button
             type="submit"
             :disabled="loading"
-            class="w-full bg-violet-600 hover:bg-violet-700 disabled:opacity-60 text-white font-medium py-2.5 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 mt-2"
+            style="width:100%;background:#7c3aed;color:white;font-size:14px;font-weight:600;padding:13px;border-radius:10px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:4px;transition:background 0.15s;box-shadow:0 4px 14px rgba(124,58,237,0.3);"
+            :style="loading ? 'opacity:0.6;cursor:not-allowed;' : ''"
+            @mouseenter="e => { if (!loading) (e.target as HTMLButtonElement).style.background='#6d28d9' }"
+            @mouseleave="e => (e.target as HTMLButtonElement).style.background='#7c3aed'"
           >
-            <svg v-if="loading" class="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+            <svg v-if="loading" class="animate-spin" style="width:16px;height:16px;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle style="opacity:0.25;" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+              <path style="opacity:0.75;" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
             </svg>
             {{ loading ? 'Autenticando...' : 'Entrar' }}
           </button>
         </form>
+
+        <p style="margin-top:28px;text-align:center;font-size:13px;color:#94a3b8;">
+          Acesso ao app?
+          <a href="/login" style="color:#7c3aed;font-weight:600;text-decoration:none;">Login de usuário</a>
+        </p>
       </div>
     </div>
   </div>
@@ -78,3 +135,10 @@ async function handleLogin() {
   loading.value = false
 }
 </script>
+
+<style scoped>
+@media (min-width: 1024px) {
+  .lg-flex { display: flex !important; }
+  .hide-on-large { display: none !important; }
+}
+</style>

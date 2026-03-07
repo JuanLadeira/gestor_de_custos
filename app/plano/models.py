@@ -22,7 +22,7 @@ class Plano(Base):
     stripe_price_id_mensal: Mapped[str | None] = mapped_column(String(100), nullable=True)
     stripe_price_id_anual: Mapped[str | None] = mapped_column(String(100), nullable=True)
     ativo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    features: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    features: Mapped[Any] = mapped_column(JSON, nullable=True)
 
     # Relationships
     assinaturas: Mapped[list["Assinatura"]] = relationship(

@@ -7,6 +7,7 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 5173,
+    allowedHosts: true,
     proxy: {
       '/api': {
         target: 'http://app:8000',
@@ -19,6 +20,9 @@ export default defineConfig({
       '/admin': {
         target: 'http://app:8000',
         changeOrigin: true,
+        bypass(req) {
+          if (req.headers.accept?.includes('text/html')) return '/index.html'
+        },
       },
       '/stripe': {
         target: 'http://app:8000',

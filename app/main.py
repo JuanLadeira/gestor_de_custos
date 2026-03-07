@@ -16,12 +16,13 @@ from app.pagamento_rateio import router as pagamento_rateio_router
 from app.plano import router as plano_router
 from app.stripe_webhooks import router as stripe_router
 from app.tenant import router as tenant_router
+from app.whatsapp import router as whatsapp_router
 from app.usuario import router as usuario_router
+from app.campanha import router as campanha_router
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    os.makedirs("/app/uploads/comprovantes", exist_ok=True)
     logger.info("Iniciando a aplicacao Gestor de Custos...")
     yield
     logger.info("Encerrando a aplicacao Gestor de Custos...")
@@ -59,8 +60,10 @@ app.include_router(mes_referencia_router.router)
 app.include_router(custo_fixo_router.router)
 app.include_router(custo_router.router)
 app.include_router(pagamento_rateio_router.router)
+app.include_router(whatsapp_router.router)
+app.include_router(campanha_router.router)
 
-
+os.makedirs("/app/uploads/comprovantes", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="/app/uploads"), name="uploads")
 
 

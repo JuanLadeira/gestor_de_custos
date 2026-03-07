@@ -12,7 +12,7 @@ class PlanoBase(BaseModel):
     stripe_price_id_mensal: str | None = None
     stripe_price_id_anual: str | None = None
     ativo: bool = True
-    features: dict[str, Any] | None = None
+    features: list[Any] | dict[str, Any] | None = None
 
 
 class PlanoCreate(PlanoBase):
@@ -27,7 +27,7 @@ class PlanoUpdate(BaseModel):
     stripe_price_id_mensal: str | None = None
     stripe_price_id_anual: str | None = None
     ativo: bool | None = None
-    features: dict[str, Any] | None = None
+    features: list[Any] | dict[str, Any] | None = None
 
 
 class PlanoPublic(PlanoBase):
