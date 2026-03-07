@@ -90,8 +90,8 @@
               <span style="font-size:11px;color:#94a3b8;font-variant-numeric:tabular-nums;">{{ formatCurrency(custo.valor) }}</span>
               <span
                 style="margin-left:auto;font-size:11px;font-weight:500;padding:2px 8px;border-radius:999px;"
-                :style="custo.status === 'PAGO' ? 'background:#d1fae5;color:#065f46;' : 'background:#fef3c7;color:#92400e;'"
-              >{{ custo.status === 'PAGO' ? 'Pago' : 'Pendente' }}</span>
+                :style="custo.status === 'PAGO' ? 'background:#d1fae5;color:#065f46;' : custo.status === 'PARCIALMENTE_PAGO' ? 'background:#ffedd5;color:#9a3412;' : 'background:#fef3c7;color:#92400e;'"
+              >{{ custo.status === 'PAGO' ? 'Pago' : custo.status === 'PARCIALMENTE_PAGO' ? 'Parcial' : 'Pendente' }}</span>
             </div>
             <!-- Rateios for this custo -->
             <table style="width:100%;border-collapse:collapse;">
@@ -123,13 +123,25 @@
                     {{ formatCurrency(rateio.valor_calculado) }}
                   </td>
                   <td style="padding:12px 20px;white-space:nowrap;">
-                    <span
-                      style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:500;"
-                      :style="rateio.status === 'PAGO' ? 'background:#d1fae5;color:#065f46;' : 'background:#fef3c7;color:#92400e;'"
-                    >
-                      <span style="width:6px;height:6px;border-radius:50%;" :style="rateio.status === 'PAGO' ? 'background:#059669;' : 'background:#d97706;'"></span>
-                      {{ rateio.status === 'PAGO' ? 'Pago' : 'Pendente' }}
-                    </span>
+                    <div style="display:inline-flex;align-items:center;gap:6px;">
+                      <span
+                        style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:500;"
+                        :style="rateio.status === 'PAGO' ? 'background:#d1fae5;color:#065f46;' : 'background:#fef3c7;color:#92400e;'"
+                      >
+                        <span style="width:6px;height:6px;border-radius:50%;" :style="rateio.status === 'PAGO' ? 'background:#059669;' : 'background:#d97706;'"></span>
+                        {{ rateio.status === 'PAGO' ? 'Pago' : 'Pendente' }}
+                      </span>
+                      <button
+                        v-if="rateio.comprovante_url"
+                        @click="abrirComprovante(rateio.comprovante_url!)"
+                        title="Ver comprovante"
+                        style="background:none;border:none;cursor:pointer;padding:2px;color:#6366f1;display:inline-flex;align-items:center;"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:14px;height:14px;">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13" />
+                        </svg>
+                      </button>
+                    </div>
                   </td>
                   <td style="padding:12px 20px;white-space:nowrap;text-align:right;">
                     <button
@@ -259,10 +271,17 @@ async function carregarDados() {
 async function marcarPago(rateio: PagamentoRateio) {
   await api.updateRateio(rateio.id, { status: 'PAGO' })
   rateio.status = 'PAGO'
+  // Reload custos to get updated statuses (PARCIALMENTE_PAGO / PAGO)
+  const custosRes = await api.getCustos(mesSelecionadoId.value ?? undefined)
+  custos.value = custosRes.data
 }
 
 function confirmarDelete(rateio: PagamentoRateio) {
   rateioParaDelete.value = rateio
+}
+
+function abrirComprovante(url: string) {
+  window.open(url, '_blank')
 }
 
 async function deletarRateio() {

@@ -17,6 +17,16 @@ class UsuarioCreate(UsuarioBase):
     role: UsuarioRole = UsuarioRole.MEMBER
 
 
+class UsuarioCreateAdmin(BaseModel):
+    """Used by admin to create a user inside a tenant (tenant_id comes from the URL)."""
+
+    username: str
+    email: EmailStr
+    nome: str
+    password: str
+    role: UsuarioRole = UsuarioRole.MEMBER
+
+
 class UsuarioUpdate(BaseModel):
     username: str | None = None
     email: EmailStr | None = None

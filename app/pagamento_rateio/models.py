@@ -2,7 +2,7 @@ import enum
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Enum, ForeignKey, Numeric, UniqueConstraint
+from sqlalchemy import Enum, ForeignKey, Numeric, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
@@ -30,6 +30,7 @@ class PagamentoRateio(Base):
     status: Mapped[StatusRateio] = mapped_column(
         Enum(StatusRateio), default=StatusRateio.PENDENTE, nullable=False
     )
+    comprovante_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     # Foreign keys
     custo_id: Mapped[int] = mapped_column(

@@ -41,5 +41,6 @@ class PagamentoRateioPublic(PagamentoRateioBase):
     id: int
     valor_calculado: Decimal
     status: StatusRateio
+    comprovante_url: str | None = None
     created_at: datetime
     updated_at: datetime

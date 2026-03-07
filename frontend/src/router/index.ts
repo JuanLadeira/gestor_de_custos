@@ -27,15 +27,27 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
-      path: '/rateios',
-      name: 'rateios',
-      component: () => import('../views/RateiosView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
       path: '/membros',
       name: 'membros',
       component: () => import('../views/UsuariosView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/campanhas',
+      name: 'campanhas',
+      component: () => import('../views/CampanhasView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/campanhas/:id',
+      name: 'campanha-detalhe',
+      component: () => import('../views/CampanhaDetalheView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/inbox',
+      name: 'inbox',
+      component: () => import('../views/InboxView.vue'),
       meta: { requiresAuth: true },
     },
     // Admin routes

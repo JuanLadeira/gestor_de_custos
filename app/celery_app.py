@@ -9,7 +9,7 @@ celery_app = Celery(
     "gestor_custos",
     broker=settings.REDIS_URL,
     backend=settings.REDIS_URL,
-    include=["app.notificacao.tasks"],
+    include=["app.notificacao.tasks", "app.campanha.tasks"],
 )
 
 celery_app.conf.update(
@@ -28,5 +28,9 @@ celery_app.conf.beat_schedule = {
     "checar-vencimentos-diariamente": {
         "task": "app.notificacao.tasks.checar_vencimentos_e_notificar",
         "schedule": crontab(hour=9, minute=0),  # Every day at 9 AM
+    },
+    "processar-campanhas": {
+        "task": "app.campanha.tasks.processar_campanhas_ativas",
+        "schedule": 60.0,  # Every 60 seconds
     },
 }

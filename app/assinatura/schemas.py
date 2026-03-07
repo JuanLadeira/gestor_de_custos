@@ -21,6 +21,16 @@ class AssinaturaPublic(BaseModel):
     updated_at: datetime
 
 
+class AssinaturaCreate(BaseModel):
+    plano_id: int
+    status: AssinaturaStatus = AssinaturaStatus.ATIVA
+
+
+class AssinaturaAdminPublic(AssinaturaPublic):
+    tenant_nome: str
+    plano_nome: str
+
+
 class AssinaturaUpdate(BaseModel):
     status: AssinaturaStatus | None = None
     data_proxima_cobranca: datetime | None = None
