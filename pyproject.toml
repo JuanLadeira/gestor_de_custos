@@ -22,6 +22,11 @@ dependencies = [
     # Email
     "aiosmtplib>=3.0.0",
     "sqlmodel>=0.0.19",
+    "stripe>=12.0.0",
+    "pydantic-settings>=2.13.1",
+    "taskipy>=1.14.1",
+    "jsonpath-ng>=1.6.0",
+    "pytz>=2024.1",
 ]
 
 [tool.pytest.ini_options]
@@ -34,11 +39,13 @@ markers = [
     "usuario: testes de usuario",
     "custo: testes de custo",
     "rateio: testes de rateio",
+    "whatsapp: testes de integração whatsapp",
 ]
 
 [dependency-groups]
 dev = [
     "freezegun>=1.5.2",
+    "respx>=0.21.0",
     "pytest>=8.4.1",
     "pytest-asyncio>=1.0.0",
     "pytest-cov>=6.2.1",
@@ -64,6 +71,8 @@ revision = "docker compose -f docker-compose.yml exec app alembic revision --aut
 head = "docker compose -f docker-compose.yml exec app alembic upgrade head"
 migrate = "uv run alembic upgrade head"
 bash = "docker compose -f docker-compose.yml exec app bash"
+populate = "docker compose -f docker-compose.yml exec -e PYTHONPATH=/app app uv run python scripts/populate_data.py"
+ngrok = "docker compose -f docker-compose.yml --profile ngrok up ngrok -d && docker logs custos_ngrok_dev 2>&1 | grep 'started tunnel'"
 pysql = "docker exec -it db_dev psql -U user -d mydatabase"
 celery-logs = "docker compose -f docker-compose.yml logs -f celery-worker celery-beat"
 

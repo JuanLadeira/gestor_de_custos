@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, UploadFile, status
 
 from app.pagamento_rateio.schemas import (
     PagamentoRateioCreate,
@@ -55,6 +55,18 @@ async def update_pagamento_rateio(
     the calculated value is recalculated.
     """
     pagamento = await service.update(pagamento_id, data)
+    if not pagamento:
+        raise HTTPException(status_code=404, detail="Pagamento rateio nao encontrado")
+    if data.status is not None:
+        await service.recalcular_status_custo(pagamento.custo_id)
+    return pagamento
+
+
+@router.post("/{pagamento_id}/comprovante", response_model=PagamentoRateioPublic)
+async def upload_comprovante(
+    pagamento_id: int, file: UploadFile, service: PagamentoRateioServiceDep
+):
+    pagamento = await service.salvar_comprovante(pagamento_id, file)
     if not pagamento:
         raise HTTPException(status_code=404, detail="Pagamento rateio nao encontrado")
     return pagamento

@@ -36,6 +36,7 @@ database.db
 .postgres-data
 .redis-data
 .pgdata
+.evolution-data
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt

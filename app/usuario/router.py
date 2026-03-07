@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, status
 
+from app.auth.current_user import CurrentOwner, CurrentUser
 from app.usuario.schemas import UsuarioCreate, UsuarioPublic, UsuarioUpdate
 from app.usuario.services import UsuarioServiceDep
 
@@ -8,6 +9,11 @@ router = APIRouter(
     tags=["Usuarios"],
     responses={404: {"description": "Nao encontrado"}},
 )
+
+
+@router.get("/me", response_model=UsuarioPublic)
+async def get_me(current_user: CurrentUser):
+    return current_user
 
 
 @router.get("/", response_model=list[UsuarioPublic])
@@ -27,7 +33,7 @@ async def get_usuario(usuario_id: int, service: UsuarioServiceDep):
 
 
 @router.post("/", response_model=UsuarioPublic, status_code=status.HTTP_201_CREATED)
-async def create_usuario(data: UsuarioCreate, service: UsuarioServiceDep):
+async def create_usuario(data: UsuarioCreate, _: CurrentOwner, service: UsuarioServiceDep):
     # Check if username or email already exists
     existing = await service.get_by_username(data.username)
     if existing:
@@ -51,7 +57,7 @@ async def update_usuario(
 
 
 @router.delete("/{usuario_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_usuario(usuario_id: int, service: UsuarioServiceDep):
+async def delete_usuario(usuario_id: int, _: CurrentOwner, service: UsuarioServiceDep):
     deleted = await service.delete(usuario_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Usuario nao encontrado")

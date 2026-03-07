@@ -21,6 +21,7 @@ class TipoCusto(str, enum.Enum):
 
 class StatusPagamento(str, enum.Enum):
     PENDENTE = "PENDENTE"
+    PARCIALMENTE_PAGO = "PARCIALMENTE_PAGO"
     PAGO = "PAGO"
 
 

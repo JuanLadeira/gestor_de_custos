@@ -15,7 +15,7 @@ async def check_db_connection():
     while retries < max_retries:
         try:
             engine = create_async_engine(db_url)
-            async with engine.connect() as connection:
+            async with engine.connect():
                 print("Database connection successful!")
                 return
         except OperationalError as e:

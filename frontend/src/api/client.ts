@@ -2,39 +2,27 @@ import axios from 'axios'
 
 const apiClient = axios.create({
   baseURL: '/api',
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  headers: { 'Content-Type': 'application/json' },
 })
 
-// Add auth token to requests
 apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token')
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
+  const token = sessionStorage.getItem('token')
+  if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
 
-// Handle 401 responses
 apiClient.interceptors.response.use(
-  (response) => response,
+  (r) => r,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token')
+      sessionStorage.removeItem('token')
       window.location.href = '/login'
     }
     return Promise.reject(error)
-  }
+  },
 )
 
-export interface Tenant {
-  id: number
-  nome: string
-  descricao: string | null
-  created_at: string
-  updated_at: string
-}
+// ── Types ────────────────────────────────────────────────────────────────────
 
 export interface Usuario {
   id: number
@@ -42,7 +30,20 @@ export interface Usuario {
   email: string
   nome: string
   ativo: boolean
+  role: 'OWNER' | 'MEMBER'
   tenant_id: number
+  created_at: string
+  updated_at: string
+}
+
+export interface MesReferencia {
+  id: number
+  ano: number
+  mes: number
+  status: 'ABERTO' | 'FECHADO'
+  tenant_id: number
+  created_at: string
+  updated_at: string
 }
 
 export interface Custo {
@@ -51,7 +52,7 @@ export interface Custo {
   valor: string
   data_vencimento: string
   tipo: 'FIXO' | 'VARIAVEL'
-  status: 'PENDENTE' | 'PAGO'
+  status: 'PENDENTE' | 'PARCIALMENTE_PAGO' | 'PAGO'
   mes_referencia_id: number
   custo_fixo_origem_id: number | null
 }
@@ -61,49 +62,62 @@ export interface PagamentoRateio {
   porcentagem: string
   valor_calculado: string
   status: 'PENDENTE' | 'PAGO'
+  comprovante_url: string | null
   custo_id: number
   usuario_id: number
 }
+
+// ── API ──────────────────────────────────────────────────────────────────────
 
 export const api = {
   // Auth
   login: (username: string, password: string) =>
     axios.post('/auth/login', new URLSearchParams({ username, password })),
 
-  // Tenants
-  getTenants: () => apiClient.get<Tenant[]>('/tenants/'),
-  createTenant: (data: { nome: string; descricao?: string }) =>
-    apiClient.post<Tenant>('/tenants/', data),
+  // Me
+  getMe: () => apiClient.get<Usuario>('/usuarios/me'),
 
   // Usuarios
   getUsuarios: (tenantId?: number) =>
     apiClient.get<Usuario[]>('/usuarios/', { params: { tenant_id: tenantId } }),
+  createUsuario: (data: { username: string; email: string; nome: string; password: string; tenant_id: number; role?: string }) =>
+    apiClient.post<Usuario>('/usuarios/', data),
+  deleteUsuario: (id: number) => apiClient.delete(`/usuarios/${id}`),
+
+  // Meses
+  getMeses: (tenantId: number) =>
+    apiClient.get<MesReferencia[]>('/meses/', { params: { tenant_id: tenantId } }),
+  createMes: (data: { ano: number; mes: number; tenant_id: number }) =>
+    apiClient.post<MesReferencia>('/meses/', data),
+  getMesAtual: (tenantId: number) =>
+    apiClient.get<MesReferencia>(`/meses/tenant/${tenantId}/atual`),
+  importarCustosFixos: (mesId: number) =>
+    apiClient.post(`/meses/${mesId}/importar-custos-fixos`),
 
   // Custos
   getCustos: (mesReferenciaId?: number) =>
     apiClient.get<Custo[]>('/custos/', { params: { mes_referencia_id: mesReferenciaId } }),
-  createCusto: (data: Partial<Custo>) =>
+  createCusto: (data: { descricao: string; valor: string; data_vencimento: string; tipo: string; mes_referencia_id: number }) =>
     apiClient.post<Custo>('/custos/', data),
   updateCusto: (id: number, data: Partial<Custo>) =>
     apiClient.put<Custo>(`/custos/${id}`, data),
-  deleteCusto: (id: number) =>
-    apiClient.delete(`/custos/${id}`),
+  deleteCusto: (id: number) => apiClient.delete(`/custos/${id}`),
 
   // Rateios
-  getRateios: (custoId?: number, usuarioId?: number) =>
-    apiClient.get<PagamentoRateio[]>('/rateios/', {
-      params: { custo_id: custoId, usuario_id: usuarioId },
-    }),
+  getRateios: (params?: { custo_id?: number; usuario_id?: number }) =>
+    apiClient.get<PagamentoRateio[]>('/rateios/', { params }),
   createRateio: (data: { porcentagem: string; custo_id: number; usuario_id: number }) =>
     apiClient.post<PagamentoRateio>('/rateios/', data),
-  updateRateio: (id: number, data: Partial<PagamentoRateio>) =>
+  updateRateio: (id: number, data: { porcentagem?: string; status?: string }) =>
     apiClient.put<PagamentoRateio>(`/rateios/${id}`, data),
-  deleteRateio: (id: number) =>
-    apiClient.delete(`/rateios/${id}`),
-
-  // Meses
-  getMesAtual: (tenantId: number) =>
-    apiClient.get(`/meses/tenant/${tenantId}/atual`),
+  deleteRateio: (id: number) => apiClient.delete(`/rateios/${id}`),
+  uploadComprovante: (id: number, file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    return apiClient.post<PagamentoRateio>(`/rateios/${id}/comprovante`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
 }
 
 export default apiClient

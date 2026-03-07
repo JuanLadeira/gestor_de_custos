@@ -1,14 +1,18 @@
+import os
+import uuid
 from decimal import Decimal
 from typing import Annotated
 
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.custo.models import Custo
+from app.custo.models import Custo, StatusPagamento
 from app.database import AsyncDBSession
-from app.pagamento_rateio.models import PagamentoRateio
+from app.pagamento_rateio.models import PagamentoRateio, StatusRateio
 from app.pagamento_rateio.schemas import PagamentoRateioCreate, PagamentoRateioUpdate
+
+UPLOAD_DIR = "/app/uploads/comprovantes"
 
 
 class PagamentoRateioService:
@@ -106,6 +110,40 @@ class PagamentoRateioService:
         for key, value in update_data.items():
             setattr(pagamento, key, value)
 
+        await self.session.flush()
+        await self.session.refresh(pagamento)
+        return pagamento
+
+    async def recalcular_status_custo(self, custo_id: int) -> None:
+        rateios = await self.get_all(custo_id=custo_id)
+        if not rateios:
+            return
+        pagos = [r for r in rateios if r.status == StatusRateio.PAGO]
+        custo = await self.session.get(Custo, custo_id)
+        if custo is None:
+            return
+        if len(pagos) == len(rateios):
+            custo.status = StatusPagamento.PAGO
+        elif pagos:
+            custo.status = StatusPagamento.PARCIALMENTE_PAGO
+        else:
+            custo.status = StatusPagamento.PENDENTE
+
+    async def salvar_comprovante(self, pagamento_id: int, file: UploadFile) -> PagamentoRateio | None:
+        pagamento = await self.get_by_id(pagamento_id)
+        if not pagamento:
+            return None
+
+        os.makedirs(UPLOAD_DIR, exist_ok=True)
+        ext = os.path.splitext(file.filename or "")[1] or ".bin"
+        filename = f"{uuid.uuid4()}{ext}"
+        filepath = os.path.join(UPLOAD_DIR, filename)
+
+        contents = await file.read()
+        with open(filepath, "wb") as f:
+            f.write(contents)
+
+        pagamento.comprovante_url = f"/uploads/comprovantes/{filename}"
         await self.session.flush()
         await self.session.refresh(pagamento)
         return pagamento
