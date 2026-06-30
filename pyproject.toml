@@ -40,6 +40,7 @@ markers = [
     "custo: testes de custo",
     "rateio: testes de rateio",
     "whatsapp: testes de integração whatsapp",
+    "authz: testes de RBAC e isolamento de tenant",
 ]
 
 [dependency-groups]
