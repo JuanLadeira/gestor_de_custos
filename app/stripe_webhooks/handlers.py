@@ -10,7 +10,6 @@ from app.notificacao.email_service import send_email_async
 from app.plano.services import PlanoService
 from app.tenant.schemas import TenantCreate
 from app.tenant.services import TenantService
-from app.usuario.models import UsuarioRole
 from app.usuario.schemas import UsuarioCreate
 from app.usuario.services import UsuarioService
 
@@ -48,25 +47,29 @@ async def handle_checkout_completed(event_data: dict, session: AsyncSession) -> 
         logger.error("Plano %s não encontrado", plano_id)
         return
 
-    # Create Tenant
+    # Create Tenant (also seeds authz defaults)
     tenant = await tenant_service.create(TenantCreate(nome=tenant_nome))
     logger.info("Tenant criado: %s (id=%s)", tenant.nome, tenant.id)
 
-    # Generate temporary password
+    from app.authz.service import AuthzService
+
+    authz_service = AuthzService(session)
+    dono = await authz_service.get_profile_by_nome(tenant.id, "Dono")
+
     senha_temporaria = secrets.token_urlsafe(16)
 
-    # Create OWNER user
+    # Create user with Dono profile
     usuario = await usuario_service.create(
         UsuarioCreate(
             username=username,
             email=email,
             nome=nome,
             password=senha_temporaria,
-            tenant_id=tenant.id,
-            role=UsuarioRole.OWNER,
-        )
+        ),
+        tenant_id=tenant.id,
+        role_profile_id=dono.id,
     )
-    logger.info("Usuario OWNER criado: %s (id=%s)", usuario.username, usuario.id)
+    logger.info("Usuario Dono criado: %s (id=%s)", usuario.username, usuario.id)
 
     # Create Assinatura
     await assinatura_service.create(
@@ -119,7 +122,6 @@ async def handle_subscription_updated(event_data: dict, session: AsyncSession) -
         "unpaid": AssinaturaStatus.SUSPENSA,
     }
     new_status = status_map.get(stripe_status, AssinaturaStatus.SUSPENSA)
-
 
     update_data: dict = {"status": new_status}
     if current_period_end:

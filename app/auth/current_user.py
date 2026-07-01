@@ -6,7 +6,7 @@ from fastapi.security import OAuth2PasswordBearer
 from jwt import DecodeError, ExpiredSignatureError, decode
 
 from app.settings import Settings
-from app.usuario.models import Usuario, UsuarioRole
+from app.usuario.models import Usuario
 from app.usuario.services import UsuarioServiceDep
 
 settings = Settings()
@@ -48,15 +48,3 @@ async def get_current_user(
 
 
 CurrentUser = Annotated[Usuario, Depends(get_current_user)]
-
-
-async def require_owner(current_user: CurrentUser) -> Usuario:
-    if current_user.role != UsuarioRole.OWNER:
-        raise HTTPException(
-            status_code=HTTPStatus.FORBIDDEN,
-            detail="Requer permissão de proprietário",
-        )
-    return current_user
-
-
-CurrentOwner = Annotated[Usuario, Depends(require_owner)]

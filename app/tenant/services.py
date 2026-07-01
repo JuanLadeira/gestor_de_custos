@@ -28,6 +28,10 @@ class TenantService:
         self.session.add(tenant)
         await self.session.flush()
         await self.session.refresh(tenant)
+
+        from app.authz.service import AuthzService
+
+        await AuthzService(self.session).seed_tenant_defaults(tenant.id)
         return tenant
 
     async def update(self, tenant_id: int, data: TenantUpdate) -> Tenant | None:
