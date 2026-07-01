@@ -62,7 +62,7 @@ async def create_usuario(
     else:
         profile = await authz.get_profile(profile_id, current_user.tenant_id)
         if not profile:
-            raise HTTPException(status_code=400, detail="Perfil inválido")
+            raise HTTPException(status_code=404, detail="Perfil não encontrado")
     return await service.create(data, tenant_id=current_user.tenant_id, role_profile_id=profile_id)
 
 

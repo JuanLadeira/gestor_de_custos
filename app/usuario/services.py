@@ -16,7 +16,7 @@ class UsuarioService:
 
     async def get_all(self, tenant_id: int | None = None) -> list[Usuario]:
         query = select(Usuario).order_by(Usuario.id)
-        if tenant_id:
+        if tenant_id is not None:
             query = query.where(Usuario.tenant_id == tenant_id)
         result = await self.session.execute(query)
         return list(result.scalars().all())

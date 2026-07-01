@@ -31,7 +31,7 @@ class Usuario(Base):
         ForeignKey("tenant.id", ondelete="CASCADE"), nullable=False
     )
     role_profile_id: Mapped[int | None] = mapped_column(
-        ForeignKey("role_profile.id", ondelete="SET NULL"), nullable=True
+        ForeignKey("role_profile.id", ondelete="RESTRICT"), nullable=True
     )
 
     # Relationships
