@@ -36,7 +36,7 @@ const router = createRouter({
       path: '/perfis',
       name: 'perfis',
       component: () => import('../views/RolesView.vue'),
-      meta: { requiresAuth: true, permission: 'role:read' },
+      meta: { requiresAuth: true, permission: 'profile:read' },
     },
     {
       path: '/campanhas',
