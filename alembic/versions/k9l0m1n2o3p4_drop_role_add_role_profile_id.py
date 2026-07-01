@@ -134,6 +134,14 @@ def upgrade() -> None:
 def downgrade() -> None:
     bind = op.get_bind()
 
+    # Purge seeded data in FK-dependency order so a subsequent re-upgrade starts clean
+    # (link tables first, then profiles/roles restricted to is_system, then all permissions)
+    bind.execute(sa.text("DELETE FROM role_profile_role"))
+    bind.execute(sa.text("DELETE FROM role_permission"))
+    bind.execute(sa.text("DELETE FROM role_profile WHERE is_system = true"))
+    bind.execute(sa.text("DELETE FROM role WHERE is_system = true"))
+    bind.execute(sa.text("DELETE FROM permission"))
+
     # Recreate the old enum + column (default MEMBER for existing rows)
     usuariorole = sa.Enum("OWNER", "MEMBER", name="usuariorole")
     usuariorole.create(bind, checkfirst=True)
