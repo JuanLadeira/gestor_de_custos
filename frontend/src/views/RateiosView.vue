@@ -145,7 +145,7 @@
                   </td>
                   <td style="padding:12px 20px;white-space:nowrap;text-align:right;">
                     <button
-                      v-if="rateio.status === 'PENDENTE'"
+                      v-if="rateio.status === 'PENDENTE' && authStore.can('rateio:pay')"
                       @click="marcarPago(rateio)"
                       title="Marcar como pago"
                       style="background:none;border:none;cursor:pointer;padding:4px;color:#059669;display:inline-flex;align-items:center;border-radius:6px;"
@@ -157,6 +157,7 @@
                       </svg>
                     </button>
                     <button
+                      v-if="authStore.can('rateio:delete')"
                       @click="confirmarDelete(rateio)"
                       title="Remover rateio"
                       style="background:none;border:none;cursor:pointer;padding:4px;color:#94a3b8;display:inline-flex;align-items:center;border-radius:6px;margin-left:4px;"
@@ -236,8 +237,8 @@ function usuarioInicial(userId: number) {
 onMounted(async () => {
   if (!authStore.tenantId) return
   const [mesesRes, usuariosRes] = await Promise.all([
-    api.getMeses(authStore.tenantId),
-    api.getUsuarios(authStore.tenantId),
+    api.getMeses(),
+    api.getUsuarios(),
   ])
   meses.value = mesesRes.data.sort((a, b) => {
     if (a.ano !== b.ano) return b.ano - a.ano

@@ -2,9 +2,11 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import apiClient from '../api/client'
+import { useAuthStore } from '../stores/auth'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 const campanhaId = Number(route.params.id)
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -294,9 +296,9 @@ onUnmounted(() => { if (logsInterval) clearInterval(logsInterval) })
         </div>
       </div>
       <div v-if="campanha" style="display:flex;gap:8px;flex-shrink:0;">
-        <button v-if="campanha.status !== 'ATIVA'" @click="ativar" :disabled="actionLoading" style="background:#059669;color:white;font-size:12px;font-weight:600;padding:7px 14px;border-radius:8px;border:none;cursor:pointer;">Ativar</button>
-        <button v-if="campanha.status === 'ATIVA'" @click="pausar" :disabled="actionLoading" style="background:#d97706;color:white;font-size:12px;font-weight:600;padding:7px 14px;border-radius:8px;border:none;cursor:pointer;">Pausar</button>
-        <button v-if="campanha.status !== 'CONCLUIDA'" @click="concluir" :disabled="actionLoading" style="background:#6366f1;color:white;font-size:12px;font-weight:600;padding:7px 14px;border-radius:8px;border:none;cursor:pointer;">Concluir</button>
+        <button v-if="authStore.can('campanha:activate') && campanha.status !== 'ATIVA'" @click="ativar" :disabled="actionLoading" style="background:#059669;color:white;font-size:12px;font-weight:600;padding:7px 14px;border-radius:8px;border:none;cursor:pointer;">Ativar</button>
+        <button v-if="authStore.can('campanha:activate') && campanha.status === 'ATIVA'" @click="pausar" :disabled="actionLoading" style="background:#d97706;color:white;font-size:12px;font-weight:600;padding:7px 14px;border-radius:8px;border:none;cursor:pointer;">Pausar</button>
+        <button v-if="authStore.can('campanha:activate') && campanha.status !== 'CONCLUIDA'" @click="concluir" :disabled="actionLoading" style="background:#6366f1;color:white;font-size:12px;font-weight:600;padding:7px 14px;border-radius:8px;border:none;cursor:pointer;">Concluir</button>
       </div>
     </div>
 
@@ -370,7 +372,7 @@ onUnmounted(() => { if (logsInterval) clearInterval(logsInterval) })
                 <span v-if="instancias.length === 0" style="font-size:12px;color:#94a3b8;">Nenhuma instância conectada</span>
               </div>
             </div>
-            <button @click="salvarConfig" :disabled="saving" style="background:#4f46e5;color:white;font-size:13px;font-weight:600;padding:9px;border-radius:8px;border:none;cursor:pointer;margin-top:4px;">
+            <button v-if="authStore.can('campanha:update')" @click="salvarConfig" :disabled="saving" style="background:#4f46e5;color:white;font-size:13px;font-weight:600;padding:9px;border-radius:8px;border:none;cursor:pointer;margin-top:4px;">
               {{ saving ? 'Salvando...' : 'Salvar configurações' }}
             </button>
           </div>
@@ -423,7 +425,7 @@ onUnmounted(() => { if (logsInterval) clearInterval(logsInterval) })
               style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px 14px;display:flex;align-items:flex-start;gap:10px;"
             >
               <pre style="flex:1;font-size:12px;color:#334155;margin:0;white-space:pre-wrap;word-break:break-word;font-family:inherit;">{{ t.conteudo }}</pre>
-              <button @click="deletarTemplate(t.id)" style="background:none;border:none;cursor:pointer;color:#94a3b8;padding:2px;flex-shrink:0;">
+              <button v-if="authStore.can('campanha:update')" @click="deletarTemplate(t.id)" style="background:none;border:none;cursor:pointer;color:#94a3b8;padding:2px;flex-shrink:0;">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:14px;height:14px;"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
@@ -438,7 +440,7 @@ onUnmounted(() => { if (logsInterval) clearInterval(logsInterval) })
               rows="3"
               style="width:100%;border:1.5px solid #e5e7eb;border-radius:8px;padding:8px 12px;font-size:13px;outline:none;box-sizing:border-box;resize:vertical;font-family:monospace;"
             ></textarea>
-            <button @click="adicionarTemplate" style="background:#0f172a;color:white;font-size:12px;font-weight:600;padding:8px;border-radius:8px;border:none;cursor:pointer;">Adicionar template</button>
+            <button v-if="authStore.can('campanha:update')" @click="adicionarTemplate" style="background:#0f172a;color:white;font-size:12px;font-weight:600;padding:8px;border-radius:8px;border:none;cursor:pointer;">Adicionar template</button>
           </div>
         </div>
 
@@ -582,7 +584,7 @@ onUnmounted(() => { if (logsInterval) clearInterval(logsInterval) })
               </div>
             </div>
 
-            <button @click="salvarDS" :disabled="saving" style="background:#4f46e5;color:white;font-size:13px;font-weight:600;padding:9px;border-radius:8px;border:none;cursor:pointer;">
+            <button v-if="authStore.can('campanha:update')" @click="salvarDS" :disabled="saving" style="background:#4f46e5;color:white;font-size:13px;font-weight:600;padding:9px;border-radius:8px;border:none;cursor:pointer;">
               {{ saving ? 'Salvando...' : 'Salvar data source' }}
             </button>
           </div>
@@ -601,13 +603,13 @@ onUnmounted(() => { if (logsInterval) clearInterval(logsInterval) })
           <div style="display:flex;gap:6px;margin-bottom:8px;">
             <input v-model="novoNumero" placeholder="Número (5511999999999)" style="flex:1;border:1.5px solid #e5e7eb;border-radius:8px;padding:8px 12px;font-size:13px;outline:none;" />
             <input v-model="novoNome" placeholder="Nome" style="flex:1;border:1.5px solid #e5e7eb;border-radius:8px;padding:8px 12px;font-size:13px;outline:none;" />
-            <button @click="adicionarContato" style="background:#0f172a;color:white;font-size:12px;font-weight:600;padding:8px 12px;border-radius:8px;border:none;cursor:pointer;white-space:nowrap;">+</button>
+            <button v-if="authStore.can('campanha:update')" @click="adicionarContato" style="background:#0f172a;color:white;font-size:12px;font-weight:600;padding:8px 12px;border-radius:8px;border:none;cursor:pointer;white-space:nowrap;">+</button>
           </div>
 
           <!-- Bulk -->
           <div style="margin-bottom:12px;">
             <textarea v-model="bulkTexto" placeholder="Um número por linha:&#10;5511999999999&#10;5521888888888" rows="3" style="width:100%;border:1.5px solid #e5e7eb;border-radius:8px;padding:8px 12px;font-size:13px;outline:none;box-sizing:border-box;resize:vertical;"></textarea>
-            <button @click="adicionarBulk" style="background:#f1f5f9;color:#334155;font-size:12px;font-weight:600;padding:7px;border-radius:8px;border:none;cursor:pointer;width:100%;margin-top:4px;">Importar em massa</button>
+            <button v-if="authStore.can('campanha:update')" @click="adicionarBulk" style="background:#f1f5f9;color:#334155;font-size:12px;font-weight:600;padding:7px;border-radius:8px;border:none;cursor:pointer;width:100%;margin-top:4px;">Importar em massa</button>
           </div>
 
           <!-- Lista -->
@@ -620,7 +622,7 @@ onUnmounted(() => { if (logsInterval) clearInterval(logsInterval) })
                 <p v-if="c.erro" style="font-size:11px;color:#dc2626;margin:0;">{{ c.erro }}</p>
               </div>
               <span style="font-size:10px;font-weight:600;color:#94a3b8;flex-shrink:0;">{{ c.status }}</span>
-              <button @click="deletarContato(c.id)" style="background:none;border:none;cursor:pointer;color:#94a3b8;padding:2px;flex-shrink:0;">
+              <button v-if="authStore.can('campanha:update')" @click="deletarContato(c.id)" style="background:none;border:none;cursor:pointer;color:#94a3b8;padding:2px;flex-shrink:0;">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:13px;height:13px;"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>

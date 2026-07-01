@@ -2,8 +2,10 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import apiClient from '../api/client'
+import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
+const authStore = useAuthStore()
 
 interface Campanha {
   id: number
@@ -85,6 +87,7 @@ onMounted(carregar)
         <p style="font-size:12px;color:#64748b;margin:0;">Disparos em massa via WhatsApp</p>
       </div>
       <button
+        v-if="authStore.can('campanha:create')"
         @click="abrirModal"
         style="display:flex;align-items:center;gap:6px;background:#4f46e5;color:white;font-size:13px;font-weight:600;padding:8px 14px;border-radius:9px;border:none;cursor:pointer;"
       >
