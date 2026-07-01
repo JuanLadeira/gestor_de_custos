@@ -19,7 +19,6 @@ async def test_seed_global_permissions_idempotent(session: AsyncSession):
     assert "custo:create" in codes
 
 
-@pytest.mark.xfail(reason="needs role_profile_id (Task 6)", strict=False)
 @pytest.mark.authz
 async def test_resolve_permissions_union(session: AsyncSession):
     svc = AuthzService(session)

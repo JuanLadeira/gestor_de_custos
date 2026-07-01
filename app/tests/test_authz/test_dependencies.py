@@ -52,7 +52,6 @@ def mini_app(session):
 
 
 @pytest.mark.authz
-@pytest.mark.xfail(reason="needs role_profile_id (Task 6)", strict=False)
 async def test_require_allows_with_permission(mini_app, session):
     user = await _seed_user_with_codes(session, ["custo:create"])
     token = create_access_token({"sub": user.username})
@@ -62,7 +61,6 @@ async def test_require_allows_with_permission(mini_app, session):
 
 
 @pytest.mark.authz
-@pytest.mark.xfail(reason="needs role_profile_id (Task 6)", strict=False)
 async def test_require_forbids_without_permission(mini_app, session):
     user = await _seed_user_with_codes(session, ["custo:read"])
     token = create_access_token({"sub": user.username})

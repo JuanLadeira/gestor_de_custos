@@ -42,7 +42,6 @@ async def test_seed_tenant_defaults_idempotent(session: AsyncSession):
 
 
 @pytest.mark.authz
-@pytest.mark.xfail(reason="needs role_profile_id (Task 6)", strict=False)
 async def test_seeded_dono_resolves_all_permissions(session: AsyncSession):
     from app.usuario.models import Usuario
     svc = AuthzService(session)
