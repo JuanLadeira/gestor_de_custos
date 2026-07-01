@@ -106,6 +106,58 @@ class AuthzService:
         return {row[0] for row in result}
 
 
+    async def list_permissions(self) -> list[Permission]:
+        result = await self.session.execute(select(Permission).order_by(Permission.code))
+        return list(result.scalars().all())
+
+    async def list_roles(self, tenant_id: int) -> list[Role]:
+        result = await self.session.execute(
+            select(Role).where(Role.tenant_id == tenant_id).order_by(Role.nome)
+        )
+        return list(result.scalars().all())
+
+    async def get_role(self, role_id: int, tenant_id: int) -> Role | None:
+        result = await self.session.execute(
+            select(Role).where(Role.id == role_id, Role.tenant_id == tenant_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def _perms_by_codes(self, codes: list[str]) -> list[Permission]:
+        if not codes:
+            return []
+        result = await self.session.execute(
+            select(Permission).where(Permission.code.in_(codes))
+        )
+        return list(result.scalars().all())
+
+    async def create_role(self, tenant_id: int, nome: str, descricao: str | None,
+                          permission_codes: list[str]) -> Role:
+        role = Role(tenant_id=tenant_id, nome=nome, descricao=descricao, is_system=False)
+        role.permissions = await self._perms_by_codes(permission_codes)
+        self.session.add(role)
+        await self.session.flush()
+        await self.session.refresh(role)
+        return role
+
+    async def update_role(self, role: Role, nome: str | None, descricao: str | None,
+                          permission_codes: list[str] | None) -> Role:
+        if nome is not None:
+            role.nome = nome
+        if descricao is not None:
+            role.descricao = descricao
+        if permission_codes is not None:
+            role.permissions = await self._perms_by_codes(permission_codes)
+        await self.session.flush()
+        await self.session.refresh(role)
+        return role
+
+    async def delete_role(self, role: Role) -> None:
+        if role.is_system:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=409, detail="Papel de sistema não pode ser removido")
+        await self.session.delete(role)
+
+
 def get_authz_service(session: AsyncDBSession) -> AuthzService:
     return AuthzService(session)
 
