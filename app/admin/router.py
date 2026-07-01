@@ -14,6 +14,8 @@ from app.assinatura.schemas import (
 )
 from app.assinatura.services import AssinaturaServiceDep
 from app.auth.security import create_access_token, verify_password
+from app.authz.router import _profile_public
+from app.authz.schemas import ProfilePublic
 from app.authz.service import AuthzServiceDep
 from app.plano.schemas import PlanoCreate, PlanoPublic, PlanoUpdate
 from app.plano.services import PlanoServiceDep
@@ -117,6 +119,13 @@ async def list_tenant_usuarios(
     tenant_id: int, _: CurrentAdmin, service: UsuarioServiceDep
 ):
     return await service.get_all(tenant_id=tenant_id)
+
+
+@router.get("/tenants/{tenant_id}/profiles", response_model=list[ProfilePublic])
+async def list_tenant_profiles(
+    tenant_id: int, _: CurrentAdmin, authz: AuthzServiceDep
+):
+    return [_profile_public(p) for p in await authz.list_profiles(tenant_id)]
 
 
 @router.post(
