@@ -157,6 +157,88 @@ class AuthzService:
             raise HTTPException(status_code=409, detail="Papel de sistema não pode ser removido")
         await self.session.delete(role)
 
+    async def list_profiles(self, tenant_id: int) -> list[RoleProfile]:
+        result = await self.session.execute(
+            select(RoleProfile).where(RoleProfile.tenant_id == tenant_id).order_by(RoleProfile.nome)
+        )
+        return list(result.scalars().all())
+
+    async def _roles_by_ids(self, tenant_id: int, role_ids: list[int]) -> list[Role]:
+        if not role_ids:
+            return []
+        result = await self.session.execute(
+            select(Role).where(Role.tenant_id == tenant_id, Role.id.in_(role_ids))
+        )
+        return list(result.scalars().all())
+
+    async def create_profile(self, tenant_id: int, nome: str, descricao: str | None,
+                             role_ids: list[int]) -> RoleProfile:
+        profile = RoleProfile(tenant_id=tenant_id, nome=nome, descricao=descricao,
+                              is_system=False, is_protected=False)
+        profile.roles = await self._roles_by_ids(tenant_id, role_ids)
+        self.session.add(profile)
+        await self.session.flush()
+        await self.session.refresh(profile)
+        return profile
+
+    async def update_profile(self, profile: RoleProfile, nome: str | None, descricao: str | None,
+                             role_ids: list[int] | None) -> RoleProfile:
+        from fastapi import HTTPException
+        if profile.is_protected:
+            raise HTTPException(status_code=409, detail="Perfil protegido não pode ser editado")
+        if nome is not None:
+            profile.nome = nome
+        if descricao is not None:
+            profile.descricao = descricao
+        if role_ids is not None:
+            profile.roles = await self._roles_by_ids(profile.tenant_id, role_ids)
+        await self.session.flush()
+        await self.session.refresh(profile)
+        return profile
+
+    async def delete_profile(self, profile: RoleProfile) -> None:
+        from fastapi import HTTPException
+        if profile.is_protected or profile.is_system:
+            raise HTTPException(status_code=409, detail="Perfil de sistema não pode ser removido")
+        await self.session.delete(profile)
+
+    async def count_active_dono(self, tenant_id: int) -> int:
+        from sqlalchemy import func
+
+        dono = await self.get_profile_by_nome(tenant_id, "Dono")
+        if not dono:
+            return 0
+        result = await self.session.execute(
+            select(func.count())
+            .select_from(Usuario)
+            .where(Usuario.role_profile_id == dono.id, Usuario.ativo == True)  # noqa: E712
+        )
+        return int(result.scalar_one())
+
+    async def assign_profile(self, user_id: int, profile_id: int, tenant_id: int) -> Usuario:
+        from fastapi import HTTPException
+
+        user = await self.session.get(Usuario, user_id)
+        if not user or user.tenant_id != tenant_id:
+            raise HTTPException(status_code=404, detail="Usuário não encontrado")
+        target = await self.get_profile(profile_id, tenant_id)
+        if not target:
+            raise HTTPException(status_code=404, detail="Perfil não encontrado")
+
+        dono = await self.get_profile_by_nome(tenant_id, "Dono")
+        removing_last_dono = (
+            user.role_profile_id == dono.id
+            and target.id != dono.id
+            and await self.count_active_dono(tenant_id) <= 1
+        )
+        if removing_last_dono:
+            raise HTTPException(status_code=409, detail="Não é possível remover o último Dono")
+
+        user.role_profile_id = profile_id
+        await self.session.flush()
+        await self.session.refresh(user)
+        return user
+
 
 def get_authz_service(session: AsyncDBSession) -> AuthzService:
     return AuthzService(session)
