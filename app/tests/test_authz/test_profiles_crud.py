@@ -41,6 +41,37 @@ async def test_create_and_assign_profile(client: AsyncClient, session):
 
 
 @pytest.mark.authz
+async def test_delete_profile_in_use_returns_409(client: AsyncClient, session):
+    tenant, owner = await make_tenant_user(session, tenant_nome="A", username="dono_a")
+    h = {"Authorization": f"Bearer {create_access_token({'sub': owner.username})}"}
+    roles = (await client.get("/api/authz/roles", headers=h)).json()
+    leitura = next(r for r in roles if r["nome"] == "Leitura")
+    created = await client.post("/api/authz/profiles", headers=h,
+                                json={"nome": "EmUso", "role_ids": [leitura["id"]]})
+    pid = created.json()["id"]
+    u = Usuario(username="m1", email="m1@e.com", password=get_password_hash("x"), nome="M1",
+                tenant_id=tenant.id, role_profile_id=pid)
+    session.add(u)
+    await session.flush()
+
+    r = await client.delete(f"/api/authz/profiles/{pid}", headers=h)
+    assert r.status_code == 409
+
+
+@pytest.mark.authz
+async def test_delete_unused_profile_returns_204(client: AsyncClient, session):
+    tenant, owner = await make_tenant_user(session, tenant_nome="A", username="dono_a")
+    h = {"Authorization": f"Bearer {create_access_token({'sub': owner.username})}"}
+    roles = (await client.get("/api/authz/roles", headers=h)).json()
+    leitura = next(r for r in roles if r["nome"] == "Leitura")
+    created = await client.post("/api/authz/profiles", headers=h,
+                                json={"nome": "SemUso", "role_ids": [leitura["id"]]})
+    pid = created.json()["id"]
+    r = await client.delete(f"/api/authz/profiles/{pid}", headers=h)
+    assert r.status_code == 204
+
+
+@pytest.mark.authz
 async def test_cannot_remove_last_dono(client: AsyncClient, session):
     tenant, owner = await make_tenant_user(session, tenant_nome="A", username="dono_a")
     svc = AuthzService(session)

@@ -198,8 +198,17 @@ class AuthzService:
 
     async def delete_profile(self, profile: RoleProfile) -> None:
         from fastapi import HTTPException
+        from sqlalchemy import func
+
         if profile.is_protected or profile.is_system:
             raise HTTPException(status_code=409, detail="Perfil de sistema não pode ser removido")
+        in_use = await self.session.execute(
+            select(func.count())
+            .select_from(Usuario)
+            .where(Usuario.role_profile_id == profile.id)
+        )
+        if int(in_use.scalar_one()) > 0:
+            raise HTTPException(status_code=409, detail="Perfil em uso por usuários")
         await self.session.delete(profile)
 
     async def count_active_dono(self, tenant_id: int) -> int:
