@@ -46,11 +46,7 @@ class CustoService:
         await self.session.refresh(custo)
         return custo
 
-    async def update(self, custo_id: int, data: CustoUpdate) -> Custo | None:
-        custo = await self.get_by_id(custo_id)
-        if not custo:
-            return None
-
+    async def update(self, custo: Custo, data: CustoUpdate) -> Custo:
         update_data = data.model_dump(exclude_unset=True)
         for key, value in update_data.items():
             setattr(custo, key, value)
@@ -59,13 +55,8 @@ class CustoService:
         await self.session.refresh(custo)
         return custo
 
-    async def delete(self, custo_id: int) -> bool:
-        custo = await self.get_by_id(custo_id)
-        if not custo:
-            return False
-
+    async def delete(self, custo: Custo) -> None:
         await self.session.delete(custo)
-        return True
 
 
 def get_custo_service(session: AsyncDBSession) -> CustoService:

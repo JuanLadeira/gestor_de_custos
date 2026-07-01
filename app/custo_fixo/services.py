@@ -51,12 +51,8 @@ class CustoFixoService:
         return custo_fixo
 
     async def update(
-        self, custo_fixo_id: int, data: CustoFixoUpdate
-    ) -> CustoFixo | None:
-        custo_fixo = await self.get_by_id(custo_fixo_id)
-        if not custo_fixo:
-            return None
-
+        self, custo_fixo: CustoFixo, data: CustoFixoUpdate
+    ) -> CustoFixo:
         update_data = data.model_dump(exclude_unset=True)
         for key, value in update_data.items():
             setattr(custo_fixo, key, value)
@@ -65,13 +61,8 @@ class CustoFixoService:
         await self.session.refresh(custo_fixo)
         return custo_fixo
 
-    async def delete(self, custo_fixo_id: int) -> bool:
-        custo_fixo = await self.get_by_id(custo_fixo_id)
-        if not custo_fixo:
-            return False
-
+    async def delete(self, custo_fixo: CustoFixo) -> None:
         await self.session.delete(custo_fixo)
-        return True
 
 
 def get_custo_fixo_service(session: AsyncDBSession) -> CustoFixoService:

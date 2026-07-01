@@ -118,19 +118,15 @@ class PagamentoRateioService:
         return pagamento
 
     async def update(
-        self, pagamento_id: int, data: PagamentoRateioUpdate
-    ) -> PagamentoRateio | None:
-        pagamento = await self.get_by_id(pagamento_id)
-        if not pagamento:
-            return None
-
+        self, pagamento: PagamentoRateio, data: PagamentoRateioUpdate
+    ) -> PagamentoRateio:
         update_data = data.model_dump(exclude_unset=True)
 
         # If percentage is being updated, validate and recalculate
         if "porcentagem" in update_data:
             nova_porcentagem = update_data["porcentagem"]
             await self.validar_porcentagem(
-                pagamento.custo_id, nova_porcentagem, excluir_id=pagamento_id
+                pagamento.custo_id, nova_porcentagem, excluir_id=pagamento.id
             )
             update_data["valor_calculado"] = await self.calcular_valor(
                 pagamento.custo_id, nova_porcentagem
@@ -158,11 +154,7 @@ class PagamentoRateioService:
         else:
             custo.status = StatusPagamento.PENDENTE
 
-    async def salvar_comprovante(self, pagamento_id: int, file: UploadFile) -> PagamentoRateio | None:
-        pagamento = await self.get_by_id(pagamento_id)
-        if not pagamento:
-            return None
-
+    async def salvar_comprovante(self, pagamento: PagamentoRateio, file: UploadFile) -> PagamentoRateio:
         os.makedirs(UPLOAD_DIR, exist_ok=True)
         ext = os.path.splitext(file.filename or "")[1] or ".bin"
         filename = f"{uuid.uuid4()}{ext}"
@@ -177,13 +169,8 @@ class PagamentoRateioService:
         await self.session.refresh(pagamento)
         return pagamento
 
-    async def delete(self, pagamento_id: int) -> bool:
-        pagamento = await self.get_by_id(pagamento_id)
-        if not pagamento:
-            return False
-
+    async def delete(self, pagamento: PagamentoRateio) -> None:
         await self.session.delete(pagamento)
-        return True
 
 
 def get_pagamento_rateio_service(session: AsyncDBSession) -> PagamentoRateioService:

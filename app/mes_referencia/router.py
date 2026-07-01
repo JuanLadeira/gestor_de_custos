@@ -53,7 +53,7 @@ async def update_mes_referencia(
     mes_ref = await service.get_by_id_scoped(mes_referencia_id, current_user.tenant_id)
     if not mes_ref:
         raise HTTPException(status_code=404, detail="Mes de referencia nao encontrado")
-    return await service.update(mes_referencia_id, data)
+    return await service.update(mes_ref, data)
 
 
 @router.post("/{mes_referencia_id}/importar-custos-fixos", status_code=status.HTTP_201_CREATED,

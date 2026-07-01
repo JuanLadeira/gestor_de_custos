@@ -36,7 +36,7 @@ async def update_custo_fixo(custo_fixo_id: int, data: CustoFixoUpdate, current_u
     cf = await service.get_scoped(custo_fixo_id, current_user.tenant_id)
     if not cf:
         raise HTTPException(status_code=404, detail="Custo fixo nao encontrado")
-    return await service.update(custo_fixo_id, data)
+    return await service.update(cf, data)
 
 
 @router.delete("/{custo_fixo_id}", status_code=status.HTTP_204_NO_CONTENT,
@@ -45,4 +45,4 @@ async def delete_custo_fixo(custo_fixo_id: int, current_user: CurrentUser, servi
     cf = await service.get_scoped(custo_fixo_id, current_user.tenant_id)
     if not cf:
         raise HTTPException(status_code=404, detail="Custo fixo nao encontrado")
-    await service.delete(custo_fixo_id)
+    await service.delete(cf)

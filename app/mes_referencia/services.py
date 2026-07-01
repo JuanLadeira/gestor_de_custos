@@ -118,12 +118,8 @@ class MesReferenciaService:
         return mes_ref
 
     async def update(
-        self, mes_referencia_id: int, data: MesReferenciaUpdate
-    ) -> MesReferencia | None:
-        mes_ref = await self.get_by_id(mes_referencia_id)
-        if not mes_ref:
-            return None
-
+        self, mes_ref: MesReferencia, data: MesReferenciaUpdate
+    ) -> MesReferencia:
         update_data = data.model_dump(exclude_unset=True)
         for key, value in update_data.items():
             setattr(mes_ref, key, value)

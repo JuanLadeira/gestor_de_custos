@@ -61,7 +61,7 @@ async def update_pagamento_rateio(
     needed = "rateio:pay" if data.status is not None else "rateio:update"
     if needed not in permissions:
         raise HTTPException(status_code=403, detail=f"Permissão necessária: {needed}")
-    pagamento = await service.update(pagamento_id, data)
+    pagamento = await service.update(pagamento, data)
     if data.status is not None:
         await service.recalcular_status_custo(pagamento.custo_id)
     return pagamento
@@ -75,7 +75,7 @@ async def upload_comprovante(
     pagamento = await service.get_scoped(pagamento_id, current_user.tenant_id)
     if not pagamento:
         raise HTTPException(status_code=404, detail="Pagamento rateio nao encontrado")
-    return await service.salvar_comprovante(pagamento_id, file)
+    return await service.salvar_comprovante(pagamento, file)
 
 
 @router.delete("/{pagamento_id}", status_code=status.HTTP_204_NO_CONTENT,
@@ -84,4 +84,4 @@ async def delete_pagamento_rateio(pagamento_id: int, current_user: CurrentUser, 
     pagamento = await service.get_scoped(pagamento_id, current_user.tenant_id)
     if not pagamento:
         raise HTTPException(status_code=404, detail="Pagamento rateio nao encontrado")
-    await service.delete(pagamento_id)
+    await service.delete(pagamento)
