@@ -39,3 +39,17 @@ async def test_import_csv_invalido_422(client: AsyncClient, session):
         files={"file": ("x.csv", b"col1,col2\n1,2\n", "text/csv")},
     )
     assert r.status_code == 422
+
+
+@pytest.mark.authz
+async def test_import_sem_permissao_403(client: AsyncClient, session):
+    _, leitor = await make_tenant_user(
+        session, tenant_nome="B", username="leitor_b", profile_nome="Leitor"
+    )
+    token = create_access_token({"sub": leitor.username})
+    r = await client.post(
+        "/api/custos/importar",
+        headers={"Authorization": f"Bearer {token}"},
+        files={"file": ("fatura.csv", CSV, "text/csv")},
+    )
+    assert r.status_code == 403
