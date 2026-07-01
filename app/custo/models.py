@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 class TipoCusto(str, enum.Enum):
     FIXO = "FIXO"
     VARIAVEL = "VARIAVEL"
+    CARTAO_CREDITO = "CARTAO_CREDITO"
 
 
 class StatusPagamento(str, enum.Enum):
@@ -46,6 +47,9 @@ class Custo(Base):
     )
     custo_fixo_origem_id: Mapped[int | None] = mapped_column(
         ForeignKey("custo_fixo.id", ondelete="SET NULL"), nullable=True
+    )
+    import_fingerprint: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, index=True
     )
 
     # Relationships

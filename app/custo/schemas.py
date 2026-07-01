@@ -13,18 +13,15 @@ class CustoBase(BaseModel):
     tipo: TipoCusto = TipoCusto.VARIAVEL
     mes_referencia_id: int
 
+
+class CustoCreate(CustoBase):
+    # custo_fixo_origem_id é setado server-side pelo import de fixos, nunca do cliente.
     @field_validator("valor")
     @classmethod
     def validate_valor(cls, v: Decimal) -> Decimal:
         if v <= 0:
             raise ValueError("Valor deve ser maior que zero")
         return v
-
-
-class CustoCreate(CustoBase):
-    # custo_fixo_origem_id is set server-side by the fixed-cost import,
-    # never accepted from the client (would allow a cross-tenant link).
-    pass
 
 
 class CustoUpdate(BaseModel):
