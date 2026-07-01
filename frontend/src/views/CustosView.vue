@@ -468,6 +468,7 @@ async function carregarCustos() {
 const importando = ref(false)
 
 async function importarFatura(e: Event) {
+  if (importando.value) return
   const input = e.target as HTMLInputElement
   const file = input.files?.[0]
   if (!file) return
@@ -476,8 +477,9 @@ async function importarFatura(e: Event) {
     const { data } = await api.importarFatura(file)
     alert(`${data.criados} custos criados, ${data.ignorados} ignorados em ${data.meses_afetados} mês(es).`)
     await carregarCustos()
-  } catch (err: any) {
-    alert(err.response?.data?.detail || 'Falha ao importar fatura')
+  } catch (err) {
+    const detail = (err as any)?.response?.data?.detail
+    alert(detail || 'Falha ao importar fatura')
   } finally {
     importando.value = false
     input.value = ''
