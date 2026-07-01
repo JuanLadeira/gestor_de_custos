@@ -23,6 +23,16 @@ class CustoService:
     async def get_by_id(self, custo_id: int) -> Custo | None:
         return await self.session.get(Custo, custo_id)
 
+    async def get_scoped(self, custo_id: int, tenant_id: int) -> Custo | None:
+        from app.mes_referencia.models import MesReferencia
+
+        result = await self.session.execute(
+            select(Custo)
+            .join(MesReferencia, MesReferencia.id == Custo.mes_referencia_id)
+            .where(Custo.id == custo_id, MesReferencia.tenant_id == tenant_id)
+        )
+        return result.scalar_one_or_none()
+
     async def create(self, data: CustoCreate) -> Custo:
         custo = Custo(
             descricao=data.descricao,
