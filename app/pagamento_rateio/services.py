@@ -33,6 +33,35 @@ class PagamentoRateioService:
     async def get_by_id(self, pagamento_id: int) -> PagamentoRateio | None:
         return await self.session.get(PagamentoRateio, pagamento_id)
 
+    async def get_scoped(self, pagamento_id: int, tenant_id: int) -> PagamentoRateio | None:
+        from app.mes_referencia.models import MesReferencia
+
+        result = await self.session.execute(
+            select(PagamentoRateio)
+            .join(Custo, Custo.id == PagamentoRateio.custo_id)
+            .join(MesReferencia, MesReferencia.id == Custo.mes_referencia_id)
+            .where(PagamentoRateio.id == pagamento_id, MesReferencia.tenant_id == tenant_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def custo_in_tenant(self, custo_id: int, tenant_id: int) -> bool:
+        from app.mes_referencia.models import MesReferencia
+
+        result = await self.session.execute(
+            select(Custo.id)
+            .join(MesReferencia, MesReferencia.id == Custo.mes_referencia_id)
+            .where(Custo.id == custo_id, MesReferencia.tenant_id == tenant_id)
+        )
+        return result.scalar_one_or_none() is not None
+
+    async def usuario_in_tenant(self, usuario_id: int, tenant_id: int) -> bool:
+        from app.usuario.models import Usuario
+
+        result = await self.session.execute(
+            select(Usuario.id).where(Usuario.id == usuario_id, Usuario.tenant_id == tenant_id)
+        )
+        return result.scalar_one_or_none() is not None
+
     async def get_soma_porcentagem_custo(
         self, custo_id: int, excluir_id: int | None = None
     ) -> Decimal:
