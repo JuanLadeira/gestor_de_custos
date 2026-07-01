@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres
+    image: postgres:17
     container_name: custos_db_dev
     environment:
       - POSTGRES_USER=${POSTGRES_USER}

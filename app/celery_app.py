@@ -1,6 +1,7 @@
 from celery import Celery
 from celery.schedules import crontab
 
+import app.models  # noqa: F401  # register all ORM mappers before any task query
 from app.settings import Settings
 
 settings = Settings()
