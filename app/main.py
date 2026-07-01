@@ -19,6 +19,7 @@ from app.tenant import router as tenant_router
 from app.whatsapp import router as whatsapp_router
 from app.usuario import router as usuario_router
 from app.campanha import router as campanha_router
+from app.authz import router as authz_router
 
 
 @asynccontextmanager
@@ -56,6 +57,7 @@ app.include_router(assinatura_router.router)
 app.include_router(stripe_router.router)
 app.include_router(tenant_router.router)
 app.include_router(usuario_router.router)
+app.include_router(authz_router.router)
 app.include_router(mes_referencia_router.router)
 app.include_router(custo_fixo_router.router)
 app.include_router(custo_router.router)

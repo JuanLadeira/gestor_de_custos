@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import apiClient from '../api/client'
+import { useAuthStore } from '../stores/auth'
+
+const authStore = useAuthStore()
 
 interface Conversa {
   id: number
@@ -204,7 +207,7 @@ onUnmounted(() => { if (refreshInterval) clearInterval(refreshInterval) })
             </div>
           </div>
           <button
-            v-if="conversaSelecionada.status !== 'ENCERRADA'"
+            v-if="authStore.can('inbox:manage') && conversaSelecionada.status !== 'ENCERRADA'"
             @click="encerrarConversa"
             style="background:#f1f5f9;color:#475569;font-size:12px;font-weight:600;padding:7px 14px;border-radius:8px;border:none;cursor:pointer;"
           >
@@ -243,7 +246,7 @@ onUnmounted(() => { if (refreshInterval) clearInterval(refreshInterval) })
         </div>
 
         <!-- Input -->
-        <div style="background:white;border-top:1px solid #e2e8f0;padding:12px 16px;flex-shrink:0;">
+        <div v-if="authStore.can('inbox:reply')" style="background:white;border-top:1px solid #e2e8f0;padding:12px 16px;flex-shrink:0;">
           <div style="display:flex;gap:8px;align-items:flex-end;">
             <textarea
               v-model="novaMensagem"

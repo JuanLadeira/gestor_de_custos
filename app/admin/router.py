@@ -14,6 +14,9 @@ from app.assinatura.schemas import (
 )
 from app.assinatura.services import AssinaturaServiceDep
 from app.auth.security import create_access_token, verify_password
+from app.authz.router import _profile_public
+from app.authz.schemas import ProfilePublic
+from app.authz.service import AuthzServiceDep
 from app.plano.schemas import PlanoCreate, PlanoPublic, PlanoUpdate
 from app.plano.services import PlanoServiceDep
 from app.tenant.schemas import TenantCreate, TenantPublic, TenantUpdate
@@ -118,6 +121,13 @@ async def list_tenant_usuarios(
     return await service.get_all(tenant_id=tenant_id)
 
 
+@router.get("/tenants/{tenant_id}/profiles", response_model=list[ProfilePublic])
+async def list_tenant_profiles(
+    tenant_id: int, _: CurrentAdmin, authz: AuthzServiceDep
+):
+    return [_profile_public(p) for p in await authz.list_profiles(tenant_id)]
+
+
 @router.post(
     "/tenants/{tenant_id}/usuarios",
     response_model=UsuarioPublic,
@@ -128,12 +138,19 @@ async def create_tenant_usuario(
     data: UsuarioCreateAdmin,
     _: CurrentAdmin,
     service: UsuarioServiceDep,
+    authz: AuthzServiceDep,
 ):
     existing = await service.get_by_username(data.username)
     if existing:
         raise HTTPException(status_code=400, detail="Username já existe")
-    create_data = UsuarioCreate(tenant_id=tenant_id, **data.model_dump())
-    return await service.create(create_data)
+    profile_id = data.role_profile_id
+    if profile_id is None:
+        dono = await authz.get_profile_by_nome(tenant_id, "Dono")
+        profile_id = dono.id
+    create = UsuarioCreate(
+        username=data.username, email=data.email, nome=data.nome, password=data.password
+    )
+    return await service.create(create, tenant_id=tenant_id, role_profile_id=profile_id)
 
 
 @router.put("/usuarios/{usuario_id}", response_model=UsuarioPublic)

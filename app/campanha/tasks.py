@@ -35,33 +35,25 @@ def _build_request_headers(ds: dict, tenant_id: int | None = None) -> dict:
         if k:
             headers[k] = v
 
-    # Token automático do sistema
-    if ds.get("use_system_token") and tenant_id:
-        try:
-            from app.auth.security import create_access_token
-            from app.usuario.models import Usuario, UsuarioRole
-
-            # Importação síncrona — executada dentro de asyncio.run() no caller
-            # Será resolvida via session passada como argumento
-            pass
-        except Exception:
-            pass
-
     return headers
 
 
 async def _get_system_token(session, tenant_id: int) -> str | None:
-    """Gera um access token usando o owner do tenant."""
+    """Gera um access token usando o Dono do tenant."""
     try:
         from app.auth.security import create_access_token
-        from app.usuario.models import Usuario, UsuarioRole
+        from app.authz.models import RoleProfile
+        from app.usuario.models import Usuario
 
         result = await session.execute(
-            select(Usuario).where(
+            select(Usuario)
+            .join(RoleProfile, Usuario.role_profile_id == RoleProfile.id)
+            .where(
                 Usuario.tenant_id == tenant_id,
-                Usuario.role == UsuarioRole.OWNER,
-                Usuario.ativo == True,
-            ).limit(1)
+                RoleProfile.nome == "Dono",
+                Usuario.ativo == True,  # noqa: E712
+            )
+            .limit(1)
         )
         owner = result.scalar_one_or_none()
         if owner:

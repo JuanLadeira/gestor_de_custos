@@ -1,6 +1,7 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.auth.current_user import CurrentUser
+from app.authz.dependencies import require
 from app.campanha.models import CampanhaStatus, ConversaStatus
 from app.campanha.schemas import (
     CampanhaCreate,
@@ -47,7 +48,8 @@ async def _build_campanha_public(campanha, service: CampanhaServiceDep) -> Campa
 
 # ── Campanhas ─────────────────────────────────────────────────────────────────
 
-@router.get("/api/campanhas", response_model=list[CampanhaPublic])
+@router.get("/api/campanhas", response_model=list[CampanhaPublic],
+            dependencies=[Depends(require("campanha:read"))])
 async def listar_campanhas(current_user: CurrentUser, service: CampanhaServiceDep):
     campanhas = await service.get_all(current_user.tenant_id)
     result = []
@@ -56,19 +58,22 @@ async def listar_campanhas(current_user: CurrentUser, service: CampanhaServiceDe
     return result
 
 
-@router.post("/api/campanhas", response_model=CampanhaPublic, status_code=status.HTTP_201_CREATED)
+@router.post("/api/campanhas", response_model=CampanhaPublic, status_code=status.HTTP_201_CREATED,
+             dependencies=[Depends(require("campanha:create"))])
 async def criar_campanha(data: CampanhaCreate, current_user: CurrentUser, service: CampanhaServiceDep):
     campanha = await service.create(current_user.tenant_id, data)
     return await _build_campanha_public(campanha, service)
 
 
-@router.get("/api/campanhas/{campanha_id}", response_model=CampanhaPublic)
+@router.get("/api/campanhas/{campanha_id}", response_model=CampanhaPublic,
+            dependencies=[Depends(require("campanha:read"))])
 async def obter_campanha(campanha_id: int, current_user: CurrentUser, service: CampanhaServiceDep):
     campanha = await _campanha_or_404(campanha_id, current_user, service)
     return await _build_campanha_public(campanha, service)
 
 
-@router.put("/api/campanhas/{campanha_id}", response_model=CampanhaPublic)
+@router.put("/api/campanhas/{campanha_id}", response_model=CampanhaPublic,
+            dependencies=[Depends(require("campanha:update"))])
 async def atualizar_campanha(
     campanha_id: int, data: CampanhaUpdate, current_user: CurrentUser, service: CampanhaServiceDep
 ):
@@ -77,13 +82,15 @@ async def atualizar_campanha(
     return await _build_campanha_public(campanha, service)
 
 
-@router.delete("/api/campanhas/{campanha_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/api/campanhas/{campanha_id}", status_code=status.HTTP_204_NO_CONTENT,
+               dependencies=[Depends(require("campanha:delete"))])
 async def deletar_campanha(campanha_id: int, current_user: CurrentUser, service: CampanhaServiceDep):
     campanha = await _campanha_or_404(campanha_id, current_user, service)
     await service.delete(campanha)
 
 
-@router.post("/api/campanhas/{campanha_id}/ativar", response_model=CampanhaPublic)
+@router.post("/api/campanhas/{campanha_id}/ativar", response_model=CampanhaPublic,
+             dependencies=[Depends(require("campanha:activate"))])
 async def ativar_campanha(campanha_id: int, current_user: CurrentUser, service: CampanhaServiceDep):
     campanha = await _campanha_or_404(campanha_id, current_user, service)
     campanha = await service.set_status(campanha, CampanhaStatus.ATIVA)
@@ -93,14 +100,16 @@ async def ativar_campanha(campanha_id: int, current_user: CurrentUser, service: 
     return await _build_campanha_public(campanha, service)
 
 
-@router.post("/api/campanhas/{campanha_id}/pausar", response_model=CampanhaPublic)
+@router.post("/api/campanhas/{campanha_id}/pausar", response_model=CampanhaPublic,
+             dependencies=[Depends(require("campanha:activate"))])
 async def pausar_campanha(campanha_id: int, current_user: CurrentUser, service: CampanhaServiceDep):
     campanha = await _campanha_or_404(campanha_id, current_user, service)
     campanha = await service.set_status(campanha, CampanhaStatus.PAUSADA)
     return await _build_campanha_public(campanha, service)
 
 
-@router.post("/api/campanhas/{campanha_id}/concluir", response_model=CampanhaPublic)
+@router.post("/api/campanhas/{campanha_id}/concluir", response_model=CampanhaPublic,
+             dependencies=[Depends(require("campanha:activate"))])
 async def concluir_campanha(campanha_id: int, current_user: CurrentUser, service: CampanhaServiceDep):
     campanha = await _campanha_or_404(campanha_id, current_user, service)
     campanha = await service.set_status(campanha, CampanhaStatus.CONCLUIDA)
@@ -109,7 +118,8 @@ async def concluir_campanha(campanha_id: int, current_user: CurrentUser, service
 
 # ── Templates ─────────────────────────────────────────────────────────────────
 
-@router.get("/api/campanhas/{campanha_id}/templates", response_model=list[TemplateMensagemPublic])
+@router.get("/api/campanhas/{campanha_id}/templates", response_model=list[TemplateMensagemPublic],
+            dependencies=[Depends(require("campanha:read"))])
 async def listar_templates(campanha_id: int, current_user: CurrentUser, service: CampanhaServiceDep):
     campanha = await _campanha_or_404(campanha_id, current_user, service)
     return campanha.templates
@@ -119,6 +129,7 @@ async def listar_templates(campanha_id: int, current_user: CurrentUser, service:
     "/api/campanhas/{campanha_id}/templates",
     response_model=TemplateMensagemPublic,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require("campanha:update"))],
 )
 async def adicionar_template(
     campanha_id: int, data: TemplateCreate, current_user: CurrentUser, service: CampanhaServiceDep
@@ -127,21 +138,23 @@ async def adicionar_template(
     return await service.add_template(campanha_id, data.conteudo)
 
 
-@router.delete("/api/templates/{template_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/api/templates/{template_id}", status_code=status.HTTP_204_NO_CONTENT,
+               dependencies=[Depends(require("campanha:update"))])
 async def deletar_template(template_id: int, current_user: CurrentUser, service: CampanhaServiceDep):
     tmpl = await service.get_template(template_id)
     if not tmpl:
         raise HTTPException(status_code=404, detail="Template não encontrado")
-    # verify ownership via campanha
+    # verify ownership via campanha (404 to avoid leaking cross-tenant existence)
     campanha = await service.get_by_id(tmpl.campanha_id, current_user.tenant_id)
     if not campanha:
-        raise HTTPException(status_code=403, detail="Acesso negado")
+        raise HTTPException(status_code=404, detail="Template não encontrado")
     await service.delete_template(tmpl)
 
 
 # ── Contatos ──────────────────────────────────────────────────────────────────
 
-@router.get("/api/campanhas/{campanha_id}/contatos", response_model=list[ContatoPublic])
+@router.get("/api/campanhas/{campanha_id}/contatos", response_model=list[ContatoPublic],
+            dependencies=[Depends(require("campanha:read"))])
 async def listar_contatos(campanha_id: int, current_user: CurrentUser, service: CampanhaServiceDep):
     await _campanha_or_404(campanha_id, current_user, service)
     return await service.get_contatos(campanha_id)
@@ -151,6 +164,7 @@ async def listar_contatos(campanha_id: int, current_user: CurrentUser, service: 
     "/api/campanhas/{campanha_id}/contatos",
     response_model=ContatoPublic,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require("campanha:update"))],
 )
 async def adicionar_contato(
     campanha_id: int, data: ContatoCreate, current_user: CurrentUser, service: CampanhaServiceDep
@@ -163,6 +177,7 @@ async def adicionar_contato(
     "/api/campanhas/{campanha_id}/contatos/bulk",
     response_model=list[ContatoPublic],
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require("campanha:update"))],
 )
 async def bulk_contatos(
     campanha_id: int, data: ContatoBulkCreate, current_user: CurrentUser, service: CampanhaServiceDep
@@ -171,20 +186,22 @@ async def bulk_contatos(
     return await service.bulk_add_contatos(campanha_id, data.numeros)
 
 
-@router.delete("/api/contatos/{contato_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/api/contatos/{contato_id}", status_code=status.HTTP_204_NO_CONTENT,
+               dependencies=[Depends(require("campanha:update"))])
 async def deletar_contato(contato_id: int, current_user: CurrentUser, service: CampanhaServiceDep):
     contato = await service.get_contato(contato_id)
     if not contato:
         raise HTTPException(status_code=404, detail="Contato não encontrado")
     campanha = await service.get_by_id(contato.campanha_id, current_user.tenant_id)
     if not campanha:
-        raise HTTPException(status_code=403, detail="Acesso negado")
+        raise HTTPException(status_code=404, detail="Contato não encontrado")
     await service.delete_contato(contato)
 
 
 # ── Inbox ─────────────────────────────────────────────────────────────────────
 
-@router.get("/api/conversas", response_model=list[ConversaPublic])
+@router.get("/api/conversas", response_model=list[ConversaPublic],
+            dependencies=[Depends(require("inbox:read"))])
 async def listar_conversas(
     current_user: CurrentUser,
     service: InboxServiceDep,
@@ -200,7 +217,8 @@ async def listar_conversas(
     return result
 
 
-@router.get("/api/conversas/{conversa_id}/mensagens", response_model=list[MensagemPublic])
+@router.get("/api/conversas/{conversa_id}/mensagens", response_model=list[MensagemPublic],
+            dependencies=[Depends(require("inbox:read"))])
 async def listar_mensagens(conversa_id: int, current_user: CurrentUser, service: InboxServiceDep):
     await _conversa_or_404(conversa_id, current_user, service)
     return await service.get_mensagens(conversa_id)
@@ -210,6 +228,7 @@ async def listar_mensagens(conversa_id: int, current_user: CurrentUser, service:
     "/api/conversas/{conversa_id}/mensagens",
     response_model=MensagemPublic,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require("inbox:reply"))],
 )
 async def enviar_mensagem(
     conversa_id: int, data: MensagemCreate, current_user: CurrentUser, service: InboxServiceDep
@@ -218,7 +237,8 @@ async def enviar_mensagem(
     return await service.enviar_mensagem(conversa, data)
 
 
-@router.put("/api/conversas/{conversa_id}/status", response_model=ConversaPublic)
+@router.put("/api/conversas/{conversa_id}/status", response_model=ConversaPublic,
+            dependencies=[Depends(require("inbox:manage"))])
 async def atualizar_status_conversa(
     conversa_id: int, data: ConversaStatusUpdate, current_user: CurrentUser, service: InboxServiceDep
 ):

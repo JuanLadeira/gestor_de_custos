@@ -19,6 +19,7 @@
           </option>
         </select>
         <button
+          v-if="authStore.can('custo:create')"
           @click="abrirCreate"
           style="display:flex;align-items:center;gap:6px;background:#4f46e5;color:white;font-size:13px;font-weight:600;padding:8px 14px;border-radius:9px;border:none;cursor:pointer;"
         >
@@ -127,6 +128,7 @@
                     </button>
                     <!-- Editar -->
                     <button
+                      v-if="authStore.can('custo:update')"
                       @click="abrirEdit(c)"
                       title="Editar"
                       style="background:none;border:none;cursor:pointer;padding:5px;border-radius:6px;color:#94a3b8;display:flex;"
@@ -137,6 +139,7 @@
                     </button>
                     <!-- Deletar -->
                     <button
+                      v-if="authStore.can('custo:delete')"
                       @click="deletar(c)"
                       title="Remover"
                       style="background:none;border:none;cursor:pointer;padding:5px;border-radius:6px;color:#94a3b8;display:flex;"
@@ -288,7 +291,7 @@
               <div style="display:flex;gap:2px;flex-shrink:0;">
                 <!-- Marcar pago -->
                 <button
-                  v-if="r.status === 'PENDENTE'"
+                  v-if="r.status === 'PENDENTE' && authStore.can('rateio:pay')"
                   @click="marcarRateioPago(r)"
                   title="Marcar como pago"
                   style="background:none;border:none;cursor:pointer;padding:4px;color:#059669;display:flex;border-radius:5px;"
@@ -298,7 +301,7 @@
                   </svg>
                 </button>
                 <!-- Upload comprovante -->
-                <label :title="r.comprovante_url ? 'Substituir comprovante' : 'Upload comprovante'" style="cursor:pointer;padding:4px;color:#6366f1;display:flex;border-radius:5px;">
+                <label v-if="authStore.can('comprovante:upload')" :title="r.comprovante_url ? 'Substituir comprovante' : 'Upload comprovante'" style="cursor:pointer;padding:4px;color:#6366f1;display:flex;border-radius:5px;">
                   <input type="file" style="display:none;" @change="e => onUploadComprovante(r, e)" accept="image/*,application/pdf" />
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:15px;height:15px;">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13" />
@@ -318,6 +321,7 @@
                 </button>
                 <!-- Remover -->
                 <button
+                  v-if="authStore.can('rateio:delete')"
                   @click="removerRateio(r)"
                   title="Remover rateio"
                   style="background:none;border:none;cursor:pointer;padding:4px;color:#94a3b8;display:flex;border-radius:5px;"
@@ -332,7 +336,7 @@
         </div>
 
         <!-- Add rateio form -->
-        <div style="border-top:1px solid #e2e8f0;padding:16px 20px;flex-shrink:0;background:#fafafa;">
+        <div v-if="authStore.can('rateio:create')" style="border-top:1px solid #e2e8f0;padding:16px 20px;flex-shrink:0;background:#fafafa;">
           <p style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin:0 0 10px;">Adicionar rateio</p>
           <form @submit.prevent="criarRateio" style="display:flex;gap:8px;align-items:flex-end;">
             <div style="flex:1;">
@@ -457,8 +461,8 @@ async function carregarCustos() {
 onMounted(async () => {
   if (!authStore.tenantId) return
   const [mesesRes, usuariosRes] = await Promise.all([
-    api.getMeses(authStore.tenantId),
-    api.getUsuarios(authStore.tenantId),
+    api.getMeses(),
+    api.getUsuarios(),
   ])
   meses.value = mesesRes.data.sort((a, b) => b.ano !== a.ano ? b.ano - a.ano : b.mes - a.mes)
   usuarios.value = usuariosRes.data

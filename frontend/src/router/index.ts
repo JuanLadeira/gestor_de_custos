@@ -24,31 +24,37 @@ const router = createRouter({
       path: '/custos',
       name: 'custos',
       component: () => import('../views/CustosView.vue'),
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, permission: 'custo:read' },
     },
     {
       path: '/membros',
       name: 'membros',
       component: () => import('../views/UsuariosView.vue'),
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, permission: 'usuario:read' },
+    },
+    {
+      path: '/perfis',
+      name: 'perfis',
+      component: () => import('../views/RolesView.vue'),
+      meta: { requiresAuth: true, permission: 'profile:read' },
     },
     {
       path: '/campanhas',
       name: 'campanhas',
       component: () => import('../views/CampanhasView.vue'),
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, permission: 'campanha:read' },
     },
     {
       path: '/campanhas/:id',
       name: 'campanha-detalhe',
       component: () => import('../views/CampanhaDetalheView.vue'),
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, permission: 'campanha:read' },
     },
     {
       path: '/inbox',
       name: 'inbox',
       component: () => import('../views/InboxView.vue'),
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, permission: 'inbox:read' },
     },
     // Admin routes
     {
@@ -93,6 +99,8 @@ router.beforeEach((to, from, next) => {
     next('/admin/login')
   } else if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     next('/login')
+  } else if (to.meta.permission && !authStore.can(to.meta.permission as string)) {
+    next('/custos')
   } else {
     next()
   }

@@ -16,7 +16,7 @@ class UsuarioService:
 
     async def get_all(self, tenant_id: int | None = None) -> list[Usuario]:
         query = select(Usuario).order_by(Usuario.id)
-        if tenant_id:
+        if tenant_id is not None:
             query = query.where(Usuario.tenant_id == tenant_id)
         result = await self.session.execute(query)
         return list(result.scalars().all())
@@ -36,14 +36,20 @@ class UsuarioService:
         )
         return result.scalar_one_or_none()
 
-    async def create(self, data: UsuarioCreate) -> Usuario:
+    async def create(
+        self,
+        data: UsuarioCreate,
+        *,
+        tenant_id: int,
+        role_profile_id: int | None = None,
+    ) -> Usuario:
         usuario = Usuario(
             username=data.username,
             email=data.email,
             password=get_password_hash(data.password),
             nome=data.nome,
-            tenant_id=data.tenant_id,
-            role=data.role,
+            tenant_id=tenant_id,
+            role_profile_id=role_profile_id,
         )
         self.session.add(usuario)
         await self.session.flush()

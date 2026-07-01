@@ -23,6 +23,16 @@ class CustoService:
     async def get_by_id(self, custo_id: int) -> Custo | None:
         return await self.session.get(Custo, custo_id)
 
+    async def get_scoped(self, custo_id: int, tenant_id: int) -> Custo | None:
+        from app.mes_referencia.models import MesReferencia
+
+        result = await self.session.execute(
+            select(Custo)
+            .join(MesReferencia, MesReferencia.id == Custo.mes_referencia_id)
+            .where(Custo.id == custo_id, MesReferencia.tenant_id == tenant_id)
+        )
+        return result.scalar_one_or_none()
+
     async def create(self, data: CustoCreate) -> Custo:
         custo = Custo(
             descricao=data.descricao,
@@ -30,18 +40,13 @@ class CustoService:
             data_vencimento=data.data_vencimento,
             tipo=data.tipo,
             mes_referencia_id=data.mes_referencia_id,
-            custo_fixo_origem_id=data.custo_fixo_origem_id,
         )
         self.session.add(custo)
         await self.session.flush()
         await self.session.refresh(custo)
         return custo
 
-    async def update(self, custo_id: int, data: CustoUpdate) -> Custo | None:
-        custo = await self.get_by_id(custo_id)
-        if not custo:
-            return None
-
+    async def update(self, custo: Custo, data: CustoUpdate) -> Custo:
         update_data = data.model_dump(exclude_unset=True)
         for key, value in update_data.items():
             setattr(custo, key, value)
@@ -50,13 +55,8 @@ class CustoService:
         await self.session.refresh(custo)
         return custo
 
-    async def delete(self, custo_id: int) -> bool:
-        custo = await self.get_by_id(custo_id)
-        if not custo:
-            return False
-
+    async def delete(self, custo: Custo) -> None:
         await self.session.delete(custo)
-        return True
 
 
 def get_custo_service(session: AsyncDBSession) -> CustoService:

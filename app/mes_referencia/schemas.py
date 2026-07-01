@@ -8,7 +8,6 @@ from app.mes_referencia.models import StatusMes
 class MesReferenciaBase(BaseModel):
     ano: int
     mes: int
-    tenant_id: int
 
     @field_validator("mes")
     @classmethod
@@ -37,6 +36,7 @@ class MesReferenciaPublic(MesReferenciaBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    tenant_id: int
     status: StatusMes
     created_at: datetime
     updated_at: datetime

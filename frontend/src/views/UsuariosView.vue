@@ -7,7 +7,7 @@
         <p style="font-size:12px;color:#94a3b8;margin:2px 0 0;">Usuários do seu inquilino</p>
       </div>
       <button
-        v-if="authStore.isOwner"
+        v-if="authStore.can('usuario:create')"
         @click="abrirModalCriar"
         style="display:flex;align-items:center;gap:8px;background:#4f46e5;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:500;cursor:pointer;"
         @mouseenter="(e) => (e.currentTarget as HTMLElement).style.background='#4338ca'"
@@ -61,17 +61,27 @@
               <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                 <p style="font-size:14px;font-weight:600;color:#0f172a;margin:0;truncate:nowrap;">{{ usuario.nome }}</p>
                 <span
-                  style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:999px;letter-spacing:.05em;text-transform:uppercase;"
-                  :style="usuario.role === 'OWNER' ? 'background:#e0e7ff;color:#4338ca;' : 'background:#f1f5f9;color:#475569;'"
-                >{{ usuario.role === 'OWNER' ? 'Dono' : 'Membro' }}</span>
+                  style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:999px;letter-spacing:.05em;text-transform:uppercase;background:#e0e7ff;color:#4338ca;"
+                >{{ profileName(usuario.role_profile_id) }}</span>
                 <span v-if="!usuario.ativo" style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:999px;background:#fee2e2;color:#dc2626;letter-spacing:.05em;text-transform:uppercase;">Inativo</span>
               </div>
               <p style="font-size:12px;color:#64748b;margin:3px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">@{{ usuario.username }}</p>
               <p style="font-size:12px;color:#94a3b8;margin:2px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ usuario.email }}</p>
             </div>
           </div>
-          <!-- Actions (OWNER only, cannot delete yourself or another OWNER) -->
-          <div v-if="authStore.isOwner && usuario.id !== authStore.userId && usuario.role !== 'OWNER'" style="margin-top:16px;padding-top:16px;border-top:1px solid #f1f5f9;display:flex;justify-content:flex-end;">
+          <!-- Change profile (profile:assign) -->
+          <div v-if="authStore.can('profile:assign') && usuario.id !== authStore.userId" style="margin-top:14px;padding-top:14px;border-top:1px solid #f1f5f9;">
+            <label style="display:block;font-size:11px;font-weight:500;color:#94a3b8;margin-bottom:5px;">Perfil</label>
+            <select
+              :value="usuario.role_profile_id ?? ''"
+              @change="(e) => alterarPerfil(usuario, Number((e.target as HTMLSelectElement).value))"
+              style="width:100%;border:1px solid #e2e8f0;border-radius:8px;padding:6px 10px;font-size:12px;color:#0f172a;background:#fff;outline:none;box-sizing:border-box;"
+            >
+              <option v-for="p in profiles" :key="p.id" :value="p.id">{{ p.nome }}</option>
+            </select>
+          </div>
+          <!-- Actions (usuario:delete, cannot delete yourself) -->
+          <div v-if="authStore.can('usuario:delete') && usuario.id !== authStore.userId" style="margin-top:16px;padding-top:16px;border-top:1px solid #f1f5f9;display:flex;justify-content:flex-end;">
             <button
               @click="confirmarDelete(usuario)"
               style="display:flex;align-items:center;gap:6px;font-size:12px;color:#dc2626;background:none;border:1px solid #fee2e2;border-radius:6px;padding:5px 10px;cursor:pointer;"
@@ -122,6 +132,13 @@
             <label style="display:block;font-size:12px;font-weight:500;color:#374151;margin-bottom:5px;">Senha</label>
             <input v-model="form.password" type="password" required placeholder="Senha inicial" style="width:100%;border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;font-size:13px;color:#0f172a;outline:none;box-sizing:border-box;" @focus="(e) => (e.target as HTMLInputElement).style.borderColor='#6366f1'" @blur="(e) => (e.target as HTMLInputElement).style.borderColor='#e2e8f0'" />
           </div>
+          <div v-if="profiles.length">
+            <label style="display:block;font-size:12px;font-weight:500;color:#374151;margin-bottom:5px;">Perfil</label>
+            <select v-model="form.role_profile_id" style="width:100%;border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;font-size:13px;color:#0f172a;background:#fff;outline:none;box-sizing:border-box;">
+              <option :value="null">Padrão (Membro)</option>
+              <option v-for="p in profiles" :key="p.id" :value="p.id">{{ p.nome }}</option>
+            </select>
+          </div>
           <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px;">
             <button type="button" @click="fecharModal" style="padding:8px 16px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-weight:500;color:#64748b;background:#fff;cursor:pointer;">Cancelar</button>
             <button type="submit" :disabled="saving" style="padding:8px 20px;border:none;border-radius:8px;font-size:13px;font-weight:500;color:#fff;background:#4f46e5;cursor:pointer;display:flex;align-items:center;gap:6px;">
@@ -155,19 +172,36 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { api, type Usuario } from '../api/client'
+import { api, type Usuario, type Profile } from '../api/client'
 import { useAuthStore } from '../stores/auth'
 
 const authStore = useAuthStore()
 
 const usuarios = ref<Usuario[]>([])
+const profiles = ref<Profile[]>([])
 const loading = ref(true)
 const showModal = ref(false)
 const saving = ref(false)
 const formError = ref('')
 const usuarioParaDelete = ref<Usuario | null>(null)
 
-const form = ref({ nome: '', username: '', email: '', password: '' })
+const form = ref<{ nome: string; username: string; email: string; password: string; role_profile_id: number | null }>(
+  { nome: '', username: '', email: '', password: '', role_profile_id: null },
+)
+
+function profileName(id: number | null): string {
+  return profiles.value.find((p) => p.id === id)?.nome ?? '—'
+}
+
+async function alterarPerfil(usuario: Usuario, profileId: number) {
+  try {
+    const res = await api.assignProfile(usuario.id, profileId)
+    const idx = usuarios.value.findIndex((u) => u.id === usuario.id)
+    if (idx !== -1) usuarios.value[idx] = res.data
+  } catch (e: any) {
+    alert(e.response?.data?.detail || 'Erro ao alterar perfil')
+  }
+}
 
 const AVATAR_COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#14b8a6', '#f59e0b', '#10b981', '#3b82f6', '#ef4444']
 function avatarColor(nome: string) {
@@ -176,26 +210,28 @@ function avatarColor(nome: string) {
 }
 
 onMounted(async () => {
+  if (authStore.can('profile:read') || authStore.can('profile:assign')) {
+    try {
+      profiles.value = (await api.getProfiles()).data
+    } catch {
+      profiles.value = []
+    }
+  }
   await carregarUsuarios()
 })
 
 async function carregarUsuarios() {
-  if (!authStore.tenantId) return
   loading.value = true
   try {
-    const res = await api.getUsuarios(authStore.tenantId)
-    usuarios.value = res.data.sort((a, b) => {
-      if (a.role === 'OWNER' && b.role !== 'OWNER') return -1
-      if (b.role === 'OWNER' && a.role !== 'OWNER') return 1
-      return a.nome.localeCompare(b.nome)
-    })
+    const res = await api.getUsuarios()
+    usuarios.value = res.data.sort((a, b) => a.nome.localeCompare(b.nome))
   } finally {
     loading.value = false
   }
 }
 
 function abrirModalCriar() {
-  form.value = { nome: '', username: '', email: '', password: '' }
+  form.value = { nome: '', username: '', email: '', password: '', role_profile_id: null }
   formError.value = ''
   showModal.value = true
 }
@@ -206,21 +242,18 @@ function fecharModal() {
 }
 
 async function criarUsuario() {
-  if (!authStore.tenantId) return
   saving.value = true
   formError.value = ''
   try {
     const res = await api.createUsuario({
-      ...form.value,
-      tenant_id: authStore.tenantId,
-      role: 'MEMBER',
+      nome: form.value.nome,
+      username: form.value.username,
+      email: form.value.email,
+      password: form.value.password,
+      role_profile_id: form.value.role_profile_id ?? undefined,
     })
     usuarios.value.push(res.data)
-    usuarios.value.sort((a, b) => {
-      if (a.role === 'OWNER' && b.role !== 'OWNER') return -1
-      if (b.role === 'OWNER' && a.role !== 'OWNER') return 1
-      return a.nome.localeCompare(b.nome)
-    })
+    usuarios.value.sort((a, b) => a.nome.localeCompare(b.nome))
     fecharModal()
   } catch (e: any) {
     formError.value = e.response?.data?.detail || 'Erro ao criar membro'

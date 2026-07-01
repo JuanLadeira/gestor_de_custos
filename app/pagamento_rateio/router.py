@@ -1,5 +1,7 @@
-from fastapi import APIRouter, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 
+from app.auth.current_user import CurrentUser
+from app.authz.dependencies import CurrentPermissions, require
 from app.pagamento_rateio.schemas import (
     PagamentoRateioCreate,
     PagamentoRateioPublic,
@@ -14,68 +16,72 @@ router = APIRouter(
 )
 
 
-@router.get("/", response_model=list[PagamentoRateioPublic])
+@router.get("/", response_model=list[PagamentoRateioPublic], dependencies=[Depends(require("rateio:read"))])
 async def list_pagamentos_rateio(
+    current_user: CurrentUser,
     service: PagamentoRateioServiceDep,
-    custo_id: int | None = None,
-    usuario_id: int | None = None,
+    custo_id: int,
 ):
-    return await service.get_all(custo_id=custo_id, usuario_id=usuario_id)
+    if not await service.custo_in_tenant(custo_id, current_user.tenant_id):
+        raise HTTPException(status_code=404, detail="Custo nao encontrado")
+    return await service.get_all(custo_id=custo_id)
 
 
-@router.get("/{pagamento_id}", response_model=PagamentoRateioPublic)
-async def get_pagamento_rateio(pagamento_id: int, service: PagamentoRateioServiceDep):
-    pagamento = await service.get_by_id(pagamento_id)
+@router.get("/{pagamento_id}", response_model=PagamentoRateioPublic, dependencies=[Depends(require("rateio:read"))])
+async def get_pagamento_rateio(pagamento_id: int, current_user: CurrentUser, service: PagamentoRateioServiceDep):
+    pagamento = await service.get_scoped(pagamento_id, current_user.tenant_id)
     if not pagamento:
         raise HTTPException(status_code=404, detail="Pagamento rateio nao encontrado")
     return pagamento
 
 
-@router.post(
-    "/", response_model=PagamentoRateioPublic, status_code=status.HTTP_201_CREATED
-)
+@router.post("/", response_model=PagamentoRateioPublic, status_code=status.HTTP_201_CREATED,
+             dependencies=[Depends(require("rateio:create"))])
 async def create_pagamento_rateio(
-    data: PagamentoRateioCreate, service: PagamentoRateioServiceDep
+    data: PagamentoRateioCreate, current_user: CurrentUser, service: PagamentoRateioServiceDep
 ):
-    """Create a new cost sharing entry.
-
-    The sum of all percentages for a cost cannot exceed 100%.
-    The calculated value is automatically computed based on the cost total and percentage.
-    """
+    if not await service.custo_in_tenant(data.custo_id, current_user.tenant_id):
+        raise HTTPException(status_code=404, detail="Custo nao encontrado")
+    if not await service.usuario_in_tenant(data.usuario_id, current_user.tenant_id):
+        raise HTTPException(status_code=404, detail="Usuario nao encontrado")
     return await service.create(data)
 
 
 @router.put("/{pagamento_id}", response_model=PagamentoRateioPublic)
 async def update_pagamento_rateio(
-    pagamento_id: int, data: PagamentoRateioUpdate, service: PagamentoRateioServiceDep
+    pagamento_id: int,
+    data: PagamentoRateioUpdate,
+    current_user: CurrentUser,
+    service: PagamentoRateioServiceDep,
+    permissions: CurrentPermissions,
 ):
-    """Update a cost sharing entry.
-
-    If percentage is updated, the sum validation is performed again and
-    the calculated value is recalculated.
-    """
-    pagamento = await service.update(pagamento_id, data)
+    pagamento = await service.get_scoped(pagamento_id, current_user.tenant_id)
     if not pagamento:
         raise HTTPException(status_code=404, detail="Pagamento rateio nao encontrado")
+    needed = "rateio:pay" if data.status is not None else "rateio:update"
+    if needed not in permissions:
+        raise HTTPException(status_code=403, detail=f"Permissão necessária: {needed}")
+    pagamento = await service.update(pagamento, data)
     if data.status is not None:
         await service.recalcular_status_custo(pagamento.custo_id)
     return pagamento
 
 
-@router.post("/{pagamento_id}/comprovante", response_model=PagamentoRateioPublic)
+@router.post("/{pagamento_id}/comprovante", response_model=PagamentoRateioPublic,
+             dependencies=[Depends(require("comprovante:upload"))])
 async def upload_comprovante(
-    pagamento_id: int, file: UploadFile, service: PagamentoRateioServiceDep
+    pagamento_id: int, file: UploadFile, current_user: CurrentUser, service: PagamentoRateioServiceDep
 ):
-    pagamento = await service.salvar_comprovante(pagamento_id, file)
+    pagamento = await service.get_scoped(pagamento_id, current_user.tenant_id)
     if not pagamento:
         raise HTTPException(status_code=404, detail="Pagamento rateio nao encontrado")
-    return pagamento
+    return await service.salvar_comprovante(pagamento, file)
 
 
-@router.delete("/{pagamento_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_pagamento_rateio(
-    pagamento_id: int, service: PagamentoRateioServiceDep
-):
-    deleted = await service.delete(pagamento_id)
-    if not deleted:
+@router.delete("/{pagamento_id}", status_code=status.HTTP_204_NO_CONTENT,
+               dependencies=[Depends(require("rateio:delete"))])
+async def delete_pagamento_rateio(pagamento_id: int, current_user: CurrentUser, service: PagamentoRateioServiceDep):
+    pagamento = await service.get_scoped(pagamento_id, current_user.tenant_id)
+    if not pagamento:
         raise HTTPException(status_code=404, detail="Pagamento rateio nao encontrado")
+    await service.delete(pagamento)

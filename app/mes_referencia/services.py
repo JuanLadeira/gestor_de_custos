@@ -28,6 +28,12 @@ class MesReferenciaService:
     async def get_by_id(self, mes_referencia_id: int) -> MesReferencia | None:
         return await self.session.get(MesReferencia, mes_referencia_id)
 
+    async def get_by_id_scoped(self, mes_referencia_id: int, tenant_id: int) -> MesReferencia | None:
+        mes = await self.session.get(MesReferencia, mes_referencia_id)
+        if mes is None or mes.tenant_id != tenant_id:
+            return None
+        return mes
+
     async def get_by_tenant_ano_mes(
         self, tenant_id: int, ano: int, mes: int
     ) -> MesReferencia | None:
@@ -104,24 +110,16 @@ class MesReferenciaService:
         await self.session.flush()
         return custos_criados
 
-    async def create(self, data: MesReferenciaCreate) -> MesReferencia:
-        mes_ref = MesReferencia(
-            ano=data.ano,
-            mes=data.mes,
-            tenant_id=data.tenant_id,
-        )
+    async def create(self, data: MesReferenciaCreate, tenant_id: int) -> MesReferencia:
+        mes_ref = MesReferencia(ano=data.ano, mes=data.mes, tenant_id=tenant_id)
         self.session.add(mes_ref)
         await self.session.flush()
         await self.session.refresh(mes_ref)
         return mes_ref
 
     async def update(
-        self, mes_referencia_id: int, data: MesReferenciaUpdate
-    ) -> MesReferencia | None:
-        mes_ref = await self.get_by_id(mes_referencia_id)
-        if not mes_ref:
-            return None
-
+        self, mes_ref: MesReferencia, data: MesReferenciaUpdate
+    ) -> MesReferencia:
         update_data = data.model_dump(exclude_unset=True)
         for key, value in update_data.items():
             setattr(mes_ref, key, value)

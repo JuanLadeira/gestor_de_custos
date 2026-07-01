@@ -2,19 +2,16 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr
 
-from app.usuario.models import UsuarioRole
-
 
 class UsuarioBase(BaseModel):
     username: str
     email: EmailStr
     nome: str
-    tenant_id: int
 
 
 class UsuarioCreate(UsuarioBase):
     password: str
-    role: UsuarioRole = UsuarioRole.MEMBER
+    role_profile_id: int | None = None
 
 
 class UsuarioCreateAdmin(BaseModel):
@@ -24,7 +21,7 @@ class UsuarioCreateAdmin(BaseModel):
     email: EmailStr
     nome: str
     password: str
-    role: UsuarioRole = UsuarioRole.MEMBER
+    role_profile_id: int | None = None
 
 
 class UsuarioUpdate(BaseModel):
@@ -33,7 +30,6 @@ class UsuarioUpdate(BaseModel):
     nome: str | None = None
     password: str | None = None
     ativo: bool | None = None
-    role: UsuarioRole | None = None
 
 
 class UsuarioPublic(BaseModel):
@@ -44,7 +40,19 @@ class UsuarioPublic(BaseModel):
     email: EmailStr
     nome: str
     ativo: bool
-    role: UsuarioRole
+    role_profile_id: int | None
     tenant_id: int
     created_at: datetime
     updated_at: datetime
+
+
+class RoleProfileBrief(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    nome: str
+
+
+class UsuarioMe(UsuarioPublic):
+    role_profile: RoleProfileBrief | None = None
+    permissions: list[str] = []

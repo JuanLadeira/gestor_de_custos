@@ -1,19 +1,14 @@
-import enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import Enum, ForeignKey, String
+from sqlalchemy import ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
 
 if TYPE_CHECKING:
+    from app.authz.models import RoleProfile
     from app.pagamento_rateio.models import PagamentoRateio
     from app.tenant.models import Tenant
-
-
-class UsuarioRole(enum.Enum):
-    OWNER = "OWNER"
-    MEMBER = "MEMBER"
 
 
 class Usuario(Base):
@@ -30,20 +25,20 @@ class Usuario(Base):
     password: Mapped[str] = mapped_column(String(255), nullable=False)
     nome: Mapped[str] = mapped_column(String(100), nullable=False)
     ativo: Mapped[bool] = mapped_column(default=True, nullable=False)
-    role: Mapped[UsuarioRole] = mapped_column(
-        Enum(UsuarioRole, name="usuariorole"),
-        default=UsuarioRole.MEMBER,
-        server_default="MEMBER",
-        nullable=False,
-    )
 
-    # Foreign key
+    # Foreign keys
     tenant_id: Mapped[int] = mapped_column(
         ForeignKey("tenant.id", ondelete="CASCADE"), nullable=False
+    )
+    role_profile_id: Mapped[int | None] = mapped_column(
+        ForeignKey("role_profile.id", ondelete="RESTRICT"), nullable=True
     )
 
     # Relationships
     tenant: Mapped["Tenant"] = relationship(back_populates="usuarios")
+    role_profile: Mapped[Optional["RoleProfile"]] = relationship(
+        "RoleProfile", lazy="selectin"
+    )
     pagamentos_rateio: Mapped[list["PagamentoRateio"]] = relationship(
         back_populates="usuario",
         cascade="all, delete-orphan",

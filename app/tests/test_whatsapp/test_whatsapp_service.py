@@ -6,9 +6,10 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.security import create_access_token, get_password_hash
+from app.authz.service import AuthzService
 from app.settings import Settings
 from app.tenant.models import Tenant
-from app.usuario.models import Usuario, UsuarioRole
+from app.usuario.models import Usuario
 from app.whatsapp.models import ConexaoStatus, WhatsappInstancia
 from app.whatsapp.schemas import InstanciaCreate, MensagemTextoRequest
 from app.whatsapp.services import WhatsappService
@@ -53,12 +54,15 @@ async def instancia_conectada(session: AsyncSession, tenant_obj: Tenant):
 
 @pytest.fixture
 async def usuario_owner(session: AsyncSession, tenant_obj: Tenant):
+    authz = AuthzService(session)
+    await authz.seed_global_permissions()
+    dono = await authz.seed_tenant_defaults(tenant_obj.id)
     u = Usuario(
         username="wa_owner",
         email="wa_owner@test.com",
         password=get_password_hash("senha123"),
         nome="WA Owner",
-        role=UsuarioRole.OWNER,
+        role_profile_id=dono.id,
         tenant_id=tenant_obj.id,
     )
     session.add(u)

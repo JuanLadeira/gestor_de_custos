@@ -281,10 +281,10 @@
                       <input v-model="newUser.password" type="password" required style="width:100%;border:1.5px solid #e5e7eb;border-radius:8px;padding:7px 10px;font-size:13px;color:#0f172a;outline:none;box-sizing:border-box;" />
                     </div>
                     <div>
-                      <label style="display:block;font-size:11px;font-weight:600;color:#374151;margin-bottom:4px;">Role</label>
-                      <select v-model="newUser.role" style="width:100%;border:1.5px solid #e5e7eb;border-radius:8px;padding:7px 10px;font-size:13px;background:white;color:#0f172a;outline:none;box-sizing:border-box;">
-                        <option value="MEMBER">MEMBER</option>
-                        <option value="OWNER">OWNER</option>
+                      <label style="display:block;font-size:11px;font-weight:600;color:#374151;margin-bottom:4px;">Perfil</label>
+                      <select v-model="newUser.role_profile_id" style="width:100%;border:1.5px solid #e5e7eb;border-radius:8px;padding:7px 10px;font-size:13px;background:white;color:#0f172a;outline:none;box-sizing:border-box;">
+                        <option :value="null">Padrão (Dono)</option>
+                        <option v-for="p in drawerProfiles" :key="p.id" :value="p.id">{{ p.nome }}</option>
                       </select>
                     </div>
                   </div>
@@ -310,7 +310,7 @@
                     <p style="font-size:11px;color:#64748b;margin:1px 0 0;">@{{ user.username }}</p>
                   </div>
                   <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
-                    <span :style="user.role === 'OWNER' ? 'background:#ede9fe;color:#7c3aed;' : 'background:#f1f5f9;color:#475569;'" style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;">{{ user.role }}</span>
+                    <span style="background:#ede9fe;color:#7c3aed;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;">{{ profileName(user.role_profile_id) }}</span>
                     <span v-if="!user.ativo" style="font-size:11px;color:#94a3b8;background:#f1f5f9;padding:2px 8px;border-radius:999px;">inativo</span>
                     <button @click="deletarUsuario(user)" style="background:none;border:none;cursor:pointer;padding:3px;color:#cbd5e1;display:flex;" title="Remover usuário">
                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:15px;height:15px;">
@@ -346,9 +346,14 @@ interface Usuario {
   nome: string
   username: string
   email: string
-  role: string
+  role_profile_id: number | null
   ativo: boolean
   tenant_id: number
+}
+
+interface Profile {
+  id: number
+  nome: string
 }
 
 interface Assinatura {
@@ -386,6 +391,11 @@ const newTenant = ref({ nome: '', descricao: '' })
 // Drawer state
 const drawerTenant = ref<Tenant | null>(null)
 const drawerUsuarios = ref<Usuario[]>([])
+const drawerProfiles = ref<Profile[]>([])
+
+function profileName(id: number | null): string {
+  return drawerProfiles.value.find((p) => p.id === id)?.nome ?? '—'
+}
 const drawerAssinatura = ref<Assinatura | null>(null)
 const drawerLoading = ref(false)
 const editTenant = ref({ nome: '', descricao: '' })
@@ -393,7 +403,9 @@ const saveMsg = ref('')
 
 // Add user form
 const showAddUser = ref(false)
-const newUser = ref({ nome: '', username: '', email: '', password: '', role: 'MEMBER' })
+const newUser = ref<{ nome: string; username: string; email: string; password: string; role_profile_id: number | null }>(
+  { nome: '', username: '', email: '', password: '', role_profile_id: null },
+)
 const userError = ref('')
 
 // Subscription form
@@ -447,12 +459,14 @@ async function openDrawer(tenant: Tenant) {
   assinaturaError.value = ''
   saveMsg.value = ''
   try {
-    const [usersRes, assRes] = await Promise.all([
+    const [usersRes, assRes, profilesRes] = await Promise.all([
       adminClient.get(`/tenants/${tenant.id}/usuarios`),
       adminClient.get(`/tenants/${tenant.id}/assinatura`),
+      adminClient.get(`/tenants/${tenant.id}/profiles`),
     ])
     drawerUsuarios.value = usersRes.data
     drawerAssinatura.value = assRes.data
+    drawerProfiles.value = profilesRes.data
   } finally {
     drawerLoading.value = false
   }
@@ -461,6 +475,7 @@ async function openDrawer(tenant: Tenant) {
 function closeDrawer() {
   drawerTenant.value = null
   drawerUsuarios.value = []
+  drawerProfiles.value = []
   drawerAssinatura.value = null
 }
 
@@ -482,9 +497,16 @@ async function criarUsuario() {
   if (!drawerTenant.value) return
   userError.value = ''
   try {
-    const res = await adminClient.post(`/tenants/${drawerTenant.value.id}/usuarios`, newUser.value)
+    const payload = {
+      nome: newUser.value.nome,
+      username: newUser.value.username,
+      email: newUser.value.email,
+      password: newUser.value.password,
+      role_profile_id: newUser.value.role_profile_id ?? undefined,
+    }
+    const res = await adminClient.post(`/tenants/${drawerTenant.value.id}/usuarios`, payload)
     drawerUsuarios.value.push(res.data)
-    newUser.value = { nome: '', username: '', email: '', password: '', role: 'MEMBER' }
+    newUser.value = { nome: '', username: '', email: '', password: '', role_profile_id: null }
     showAddUser.value = false
   } catch (err: any) {
     userError.value = err.response?.data?.detail || 'Erro ao criar usuário.'

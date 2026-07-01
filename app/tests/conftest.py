@@ -120,3 +120,31 @@ def whatsapp_instancia_factory(session) -> type[WhatsappInstanciaFactory]:
     """Fixture that provides WhatsappInstanciaFactory configured with the test session."""
     WhatsappInstanciaFactory._meta.sqlalchemy_session = session
     return WhatsappInstanciaFactory
+
+
+from app.authz.service import AuthzService as _AuthzService
+
+
+async def make_tenant_user(session, *, tenant_nome: str, username: str,
+                           profile_nome: str = "Dono"):
+    """Create a tenant (seeded with authz) + a user on a given profile.
+    Returns (tenant, user)."""
+    from app.auth.security import get_password_hash
+    from app.tenant.models import Tenant
+    from app.usuario.models import Usuario
+
+    svc = _AuthzService(session)
+    await svc.seed_global_permissions()
+    tenant = Tenant(nome=tenant_nome)
+    session.add(tenant)
+    await session.flush()
+    await svc.seed_tenant_defaults(tenant.id)
+    profile = await svc.get_profile_by_nome(tenant.id, profile_nome)
+    user = Usuario(
+        username=username, email=f"{username}@e.com",
+        password=get_password_hash("senha123"), nome=username,
+        tenant_id=tenant.id, role_profile_id=profile.id,
+    )
+    session.add(user)
+    await session.flush()
+    return tenant, user

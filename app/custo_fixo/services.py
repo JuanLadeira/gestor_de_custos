@@ -32,12 +32,18 @@ class CustoFixoService:
     async def get_by_id(self, custo_fixo_id: int) -> CustoFixo | None:
         return await self.session.get(CustoFixo, custo_fixo_id)
 
-    async def create(self, data: CustoFixoCreate) -> CustoFixo:
+    async def get_scoped(self, custo_fixo_id: int, tenant_id: int) -> CustoFixo | None:
+        cf = await self.session.get(CustoFixo, custo_fixo_id)
+        if cf is None or cf.tenant_id != tenant_id:
+            return None
+        return cf
+
+    async def create(self, data: CustoFixoCreate, tenant_id: int) -> CustoFixo:
         custo_fixo = CustoFixo(
             descricao=data.descricao,
             valor=data.valor,
             dia_vencimento=data.dia_vencimento,
-            tenant_id=data.tenant_id,
+            tenant_id=tenant_id,
         )
         self.session.add(custo_fixo)
         await self.session.flush()
@@ -45,12 +51,8 @@ class CustoFixoService:
         return custo_fixo
 
     async def update(
-        self, custo_fixo_id: int, data: CustoFixoUpdate
-    ) -> CustoFixo | None:
-        custo_fixo = await self.get_by_id(custo_fixo_id)
-        if not custo_fixo:
-            return None
-
+        self, custo_fixo: CustoFixo, data: CustoFixoUpdate
+    ) -> CustoFixo:
         update_data = data.model_dump(exclude_unset=True)
         for key, value in update_data.items():
             setattr(custo_fixo, key, value)
@@ -59,13 +61,8 @@ class CustoFixoService:
         await self.session.refresh(custo_fixo)
         return custo_fixo
 
-    async def delete(self, custo_fixo_id: int) -> bool:
-        custo_fixo = await self.get_by_id(custo_fixo_id)
-        if not custo_fixo:
-            return False
-
+    async def delete(self, custo_fixo: CustoFixo) -> None:
         await self.session.delete(custo_fixo)
-        return True
 
 
 def get_custo_fixo_service(session: AsyncDBSession) -> CustoFixoService:

@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 
 from app.auth.current_user import CurrentUser
+from app.authz.dependencies import require
 from app.database.session import async_session_factory
 from app.whatsapp.models import WhatsappInstancia
 from app.whatsapp.schemas import (
@@ -26,12 +27,14 @@ async def _get_instancia_or_404(instancia_id: int, current_user: CurrentUser, se
     return instancia
 
 
-@router.get("/instancias", response_model=list[InstanciaPublic])
+@router.get("/instancias", response_model=list[InstanciaPublic],
+            dependencies=[Depends(require("whatsapp:read"))])
 async def listar_instancias(current_user: CurrentUser, service: WhatsappServiceDep):
     return await service.listar_instancias(current_user.tenant_id)
 
 
-@router.post("/instancias", response_model=InstanciaPublic, status_code=status.HTTP_201_CREATED)
+@router.post("/instancias", response_model=InstanciaPublic, status_code=status.HTTP_201_CREATED,
+             dependencies=[Depends(require("whatsapp:manage"))])
 async def criar_instancia(
     data: InstanciaCreate,
     current_user: CurrentUser,
@@ -40,7 +43,8 @@ async def criar_instancia(
     return await service.criar_instancia(current_user.tenant_id, data)
 
 
-@router.get("/instancias/{instancia_id}/qrcode")
+@router.get("/instancias/{instancia_id}/qrcode",
+            dependencies=[Depends(require("whatsapp:manage"))])
 async def obter_qrcode(
     instancia_id: int,
     current_user: CurrentUser,
@@ -50,7 +54,8 @@ async def obter_qrcode(
     return await service.obter_qrcode(instancia)
 
 
-@router.get("/instancias/{instancia_id}/status", response_model=InstanciaPublic)
+@router.get("/instancias/{instancia_id}/status", response_model=InstanciaPublic,
+            dependencies=[Depends(require("whatsapp:read"))])
 async def sincronizar_status(
     instancia_id: int,
     current_user: CurrentUser,
@@ -60,7 +65,8 @@ async def sincronizar_status(
     return await service.sincronizar_status(instancia)
 
 
-@router.delete("/instancias/{instancia_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/instancias/{instancia_id}", status_code=status.HTTP_204_NO_CONTENT,
+               dependencies=[Depends(require("whatsapp:manage"))])
 async def deletar_instancia(
     instancia_id: int,
     current_user: CurrentUser,
@@ -70,7 +76,8 @@ async def deletar_instancia(
     await service.deletar_instancia(instancia)
 
 
-@router.post("/instancias/{instancia_id}/mensagens/texto")
+@router.post("/instancias/{instancia_id}/mensagens/texto",
+             dependencies=[Depends(require("whatsapp:send"))])
 async def enviar_texto(
     instancia_id: int,
     data: MensagemTextoRequest,
@@ -81,7 +88,8 @@ async def enviar_texto(
     return await service.enviar_texto(instancia, data)
 
 
-@router.post("/instancias/{instancia_id}/mensagens/midia")
+@router.post("/instancias/{instancia_id}/mensagens/midia",
+             dependencies=[Depends(require("whatsapp:send"))])
 async def enviar_midia(
     instancia_id: int,
     data: MensagemMidiaRequest,

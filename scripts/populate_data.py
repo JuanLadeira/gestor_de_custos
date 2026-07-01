@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.admin.models import Admin
 from app.assinatura.models import Assinatura, AssinaturaStatus
 from app.auth.security import get_password_hash
+from app.authz.service import AuthzService
 from app.custo.models import Custo, StatusPagamento, TipoCusto
 from app.custo_fixo.models import CustoFixo
 from app.database.session import async_session_factory
@@ -27,7 +28,7 @@ from app.mes_referencia.models import MesReferencia, StatusMes
 from app.pagamento_rateio.models import PagamentoRateio, StatusRateio
 from app.plano.models import Plano
 from app.tenant.models import Tenant
-from app.usuario.models import Usuario, UsuarioRole
+from app.usuario.models import Usuario
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -55,6 +56,11 @@ TABELAS = [
     "custo_fixo",
     "assinatura",
     "usuario",
+    "role_profile_role",
+    "role_profile",
+    "role_permission",
+    "role",
+    "permission",
     "tenant",
     "plano",
     "admin",
@@ -134,9 +140,13 @@ async def criar_tenant_juan(
     session.add(tenant)
     await session.flush()
 
-    juan = Usuario(username="juan", email="juan@demo.com", password=senha(), nome="Juan Silva", role=UsuarioRole.OWNER, tenant_id=tenant.id)
-    pedro = Usuario(username="pedro", email="pedro@demo.com", password=senha(), nome="Pedro Souza", role=UsuarioRole.MEMBER, tenant_id=tenant.id)
-    maria = Usuario(username="maria", email="maria@demo.com", password=senha(), nome="Maria Oliveira", role=UsuarioRole.MEMBER, tenant_id=tenant.id)
+    authz = AuthzService(session)
+    dono = await authz.seed_tenant_defaults(tenant.id)
+    membro = await authz.get_profile_by_nome(tenant.id, "Membro")
+
+    juan = Usuario(username="juan", email="juan@demo.com", password=senha(), nome="Juan Silva", role_profile_id=dono.id, tenant_id=tenant.id)
+    pedro = Usuario(username="pedro", email="pedro@demo.com", password=senha(), nome="Pedro Souza", role_profile_id=membro.id, tenant_id=tenant.id)
+    maria = Usuario(username="maria", email="maria@demo.com", password=senha(), nome="Maria Oliveira", role_profile_id=membro.id, tenant_id=tenant.id)
     session.add_all([juan, pedro, maria])
     await session.flush()
 
@@ -207,7 +217,7 @@ async def criar_tenant_juan(
     await session.flush()
 
     print(f"🏠 Tenant criado: {tenant.nome}")
-    print(f"   Usuários: juan (OWNER), pedro (MEMBER), maria (MEMBER)  — senha: {SENHA_PADRAO}")
+    print(f"   Usuários: juan (Dono), pedro (Membro), maria (Membro)  — senha: {SENHA_PADRAO}")
     print(f"   Assinatura: Pro (ATIVA)")
     print(f"   Meses: Jan/2026 (FECHADO), Fev/2026 (FECHADO), Mar/2026 (ABERTO)")
 
@@ -219,8 +229,12 @@ async def criar_tenant_luana(
     session.add(tenant)
     await session.flush()
 
-    luana = Usuario(username="luana", email="luana@demo.com", password=senha(), nome="Luana Costa", role=UsuarioRole.OWNER, tenant_id=tenant.id)
-    carlos = Usuario(username="carlos", email="carlos@demo.com", password=senha(), nome="Carlos Mendes", role=UsuarioRole.MEMBER, tenant_id=tenant.id)
+    authz = AuthzService(session)
+    dono = await authz.seed_tenant_defaults(tenant.id)
+    membro = await authz.get_profile_by_nome(tenant.id, "Membro")
+
+    luana = Usuario(username="luana", email="luana@demo.com", password=senha(), nome="Luana Costa", role_profile_id=dono.id, tenant_id=tenant.id)
+    carlos = Usuario(username="carlos", email="carlos@demo.com", password=senha(), nome="Carlos Mendes", role_profile_id=membro.id, tenant_id=tenant.id)
     session.add_all([luana, carlos])
     await session.flush()
 
@@ -267,7 +281,7 @@ async def criar_tenant_luana(
     await session.flush()
 
     print(f"🏠 Tenant criado: {tenant.nome}")
-    print(f"   Usuários: luana (OWNER), carlos (MEMBER)  — senha: {SENHA_PADRAO}")
+    print(f"   Usuários: luana (Dono), carlos (Membro)  — senha: {SENHA_PADRAO}")
     print(f"   Assinatura: Básico (ATIVA)")
     print(f"   Meses: Fev/2026 (FECHADO), Mar/2026 (ABERTO)")
 
@@ -285,6 +299,10 @@ async def main() -> None:
     async with async_session_factory() as session:
         async with session.begin():
             await limpar_banco(session)
+
+            print("🔑 Semeando permissões globais...")
+            await AuthzService(session).seed_global_permissions()
+            print("   OK\n")
 
             print("📋 Criando planos...")
             planos = await criar_planos(session)
