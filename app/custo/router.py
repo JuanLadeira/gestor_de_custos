@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 
 from app.auth.current_user import CurrentUser
 from app.authz.dependencies import require
+from app.custo.importacao_nubank import CSVFaturaInvalido
 from app.custo.schemas import CustoCreate, CustoPublic, CustoUpdate
 from app.custo.services import CustoServiceDep
 from app.mes_referencia.services import MesReferenciaServiceDep
@@ -46,6 +47,24 @@ async def create_custo(
     if not mes:
         raise HTTPException(status_code=404, detail="Mes de referencia nao encontrado")
     return await service.create(data)
+
+
+@router.post("/importar", dependencies=[Depends(require("custo:import"))])
+async def importar_fatura(
+    file: UploadFile,
+    current_user: CurrentUser,
+    service: CustoServiceDep,
+):
+    conteudo = await file.read()
+    try:
+        resultado = await service.importar_fatura(conteudo, tenant_id=current_user.tenant_id)
+    except CSVFaturaInvalido as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return {
+        "criados": resultado.criados,
+        "ignorados": resultado.ignorados,
+        "meses_afetados": resultado.meses_afetados,
+    }
 
 
 @router.put("/{custo_id}", response_model=CustoPublic, dependencies=[Depends(require("custo:update"))])

@@ -21,6 +21,7 @@ PERMISSIONS: list[tuple[str, str, str]] = [
     ("custo:create", "custo", "Criar custos"),
     ("custo:update", "custo", "Editar custos"),
     ("custo:delete", "custo", "Remover custos"),
+    ("custo:import", "custo", "Importar fatura de cartão"),
     ("custo_fixo:read", "custo_fixo", "Ver custos fixos"),
     ("custo_fixo:create", "custo_fixo", "Criar custos fixos"),
     ("custo_fixo:update", "custo_fixo", "Editar custos fixos"),
