@@ -1,7 +1,15 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.auth.current_user import CurrentOwner, CurrentUser
-from app.usuario.schemas import UsuarioCreate, UsuarioPublic, UsuarioUpdate
+from app.auth.current_user import CurrentUser
+from app.authz.dependencies import CurrentPermissions, require
+from app.authz.service import AuthzServiceDep
+from app.usuario.schemas import (
+    RoleProfileBrief,
+    UsuarioCreate,
+    UsuarioMe,
+    UsuarioPublic,
+    UsuarioUpdate,
+)
 from app.usuario.services import UsuarioServiceDep
 
 router = APIRouter(
@@ -11,53 +19,68 @@ router = APIRouter(
 )
 
 
-@router.get("/me", response_model=UsuarioPublic)
-async def get_me(current_user: CurrentUser):
-    return current_user
+@router.get("/me", response_model=UsuarioMe)
+async def get_me(current_user: CurrentUser, permissions: CurrentPermissions):
+    profile = current_user.role_profile
+    return UsuarioMe(
+        **UsuarioPublic.model_validate(current_user).model_dump(),
+        role_profile=RoleProfileBrief.model_validate(profile) if profile else None,
+        permissions=sorted(permissions),
+    )
 
 
-@router.get("/", response_model=list[UsuarioPublic])
-async def list_usuarios(
-    service: UsuarioServiceDep,
-    tenant_id: int | None = None,
-):
-    return await service.get_all(tenant_id=tenant_id)
+@router.get("/", response_model=list[UsuarioPublic], dependencies=[Depends(require("usuario:read"))])
+async def list_usuarios(current_user: CurrentUser, service: UsuarioServiceDep):
+    return await service.get_all(tenant_id=current_user.tenant_id)
 
 
-@router.get("/{usuario_id}", response_model=UsuarioPublic)
-async def get_usuario(usuario_id: int, service: UsuarioServiceDep):
+@router.get("/{usuario_id}", response_model=UsuarioPublic, dependencies=[Depends(require("usuario:read"))])
+async def get_usuario(usuario_id: int, current_user: CurrentUser, service: UsuarioServiceDep):
     usuario = await service.get_by_id(usuario_id)
-    if not usuario:
+    if not usuario or usuario.tenant_id != current_user.tenant_id:
         raise HTTPException(status_code=404, detail="Usuario nao encontrado")
     return usuario
 
 
-@router.post("/", response_model=UsuarioPublic, status_code=status.HTTP_201_CREATED)
-async def create_usuario(data: UsuarioCreate, _: CurrentOwner, service: UsuarioServiceDep):
-    # Check if username or email already exists
-    existing = await service.get_by_username(data.username)
-    if existing:
+@router.post("/", response_model=UsuarioPublic, status_code=status.HTTP_201_CREATED,
+             dependencies=[Depends(require("usuario:create"))])
+async def create_usuario(
+    data: UsuarioCreate,
+    current_user: CurrentUser,
+    service: UsuarioServiceDep,
+    authz: AuthzServiceDep,
+):
+    if await service.get_by_username(data.username):
         raise HTTPException(status_code=400, detail="Username ja existe")
-
-    existing = await service.get_by_email(data.email)
-    if existing:
+    if await service.get_by_email(data.email):
         raise HTTPException(status_code=400, detail="Email ja existe")
 
-    return await service.create(data)
+    profile_id = data.role_profile_id
+    if profile_id is None:
+        membro = await authz.get_profile_by_nome(current_user.tenant_id, "Membro")
+        profile_id = membro.id
+    else:
+        profile = await authz.get_profile(profile_id, current_user.tenant_id)
+        if not profile:
+            raise HTTPException(status_code=400, detail="Perfil inválido")
+    return await service.create(data, tenant_id=current_user.tenant_id, role_profile_id=profile_id)
 
 
-@router.put("/{usuario_id}", response_model=UsuarioPublic)
+@router.put("/{usuario_id}", response_model=UsuarioPublic,
+            dependencies=[Depends(require("usuario:update"))])
 async def update_usuario(
-    usuario_id: int, data: UsuarioUpdate, service: UsuarioServiceDep
+    usuario_id: int, data: UsuarioUpdate, current_user: CurrentUser, service: UsuarioServiceDep
 ):
-    usuario = await service.update(usuario_id, data)
-    if not usuario:
+    usuario = await service.get_by_id(usuario_id)
+    if not usuario or usuario.tenant_id != current_user.tenant_id:
         raise HTTPException(status_code=404, detail="Usuario nao encontrado")
-    return usuario
+    return await service.update(usuario_id, data)
 
 
-@router.delete("/{usuario_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_usuario(usuario_id: int, _: CurrentOwner, service: UsuarioServiceDep):
-    deleted = await service.delete(usuario_id)
-    if not deleted:
+@router.delete("/{usuario_id}", status_code=status.HTTP_204_NO_CONTENT,
+               dependencies=[Depends(require("usuario:delete"))])
+async def delete_usuario(usuario_id: int, current_user: CurrentUser, service: UsuarioServiceDep):
+    usuario = await service.get_by_id(usuario_id)
+    if not usuario or usuario.tenant_id != current_user.tenant_id:
         raise HTTPException(status_code=404, detail="Usuario nao encontrado")
+    await service.delete(usuario_id)

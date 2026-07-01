@@ -83,6 +83,14 @@ class AuthzService:
             dono = await self.get_profile_by_nome(tenant_id, "Dono")
         return dono
 
+    async def get_profile(self, profile_id: int, tenant_id: int) -> RoleProfile | None:
+        result = await self.session.execute(
+            select(RoleProfile).where(
+                RoleProfile.id == profile_id, RoleProfile.tenant_id == tenant_id
+            )
+        )
+        return result.scalar_one_or_none()
+
     async def resolve_permissions(self, user: Usuario) -> set[str]:
         query = (
             select(Permission.code)
