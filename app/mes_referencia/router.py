@@ -23,6 +23,10 @@ async def list_meses_referencia(current_user: CurrentUser, service: MesReferenci
 
 @router.get("/atual", response_model=MesReferenciaPublic, dependencies=[Depends(require("mes:read"))])
 async def get_ou_criar_mes_atual(current_user: CurrentUser, service: MesReferenciaServiceDep):
+    # Get-or-create by design: this is the central entry point of the cost flow,
+    # so a first read of the current month also creates it and imports fixed costs.
+    # Intentionally gated by mes:read (not mes:create) so the Leitor role can open
+    # the current month. The implicit write here is expected behavior, not a bug.
     return await service.obter_ou_criar_mes_atual(current_user.tenant_id)
 
 
