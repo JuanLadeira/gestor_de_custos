@@ -30,10 +30,39 @@ export interface Usuario {
   email: string
   nome: string
   ativo: boolean
-  role: 'OWNER' | 'MEMBER'
+  role_profile_id: number | null
   tenant_id: number
   created_at: string
   updated_at: string
+}
+
+export interface UsuarioMe extends Usuario {
+  role_profile: { id: number; nome: string } | null
+  permissions: string[]
+}
+
+export interface Permission {
+  id: number
+  code: string
+  grupo: string
+  descricao: string | null
+}
+
+export interface Role {
+  id: number
+  nome: string
+  descricao: string | null
+  is_system: boolean
+  permission_codes: string[]
+}
+
+export interface Profile {
+  id: number
+  nome: string
+  descricao: string | null
+  is_system: boolean
+  is_protected: boolean
+  role_ids: number[]
 }
 
 export interface MesReferencia {
@@ -75,22 +104,19 @@ export const api = {
     axios.post('/auth/login', new URLSearchParams({ username, password })),
 
   // Me
-  getMe: () => apiClient.get<Usuario>('/usuarios/me'),
+  getMe: () => apiClient.get<UsuarioMe>('/usuarios/me'),
 
   // Usuarios
-  getUsuarios: (tenantId?: number) =>
-    apiClient.get<Usuario[]>('/usuarios/', { params: { tenant_id: tenantId } }),
-  createUsuario: (data: { username: string; email: string; nome: string; password: string; tenant_id: number; role?: string }) =>
+  getUsuarios: () => apiClient.get<Usuario[]>('/usuarios/'),
+  createUsuario: (data: { username: string; email: string; nome: string; password: string; role_profile_id?: number }) =>
     apiClient.post<Usuario>('/usuarios/', data),
   deleteUsuario: (id: number) => apiClient.delete(`/usuarios/${id}`),
 
   // Meses
-  getMeses: (tenantId: number) =>
-    apiClient.get<MesReferencia[]>('/meses/', { params: { tenant_id: tenantId } }),
-  createMes: (data: { ano: number; mes: number; tenant_id: number }) =>
+  getMeses: () => apiClient.get<MesReferencia[]>('/meses/'),
+  createMes: (data: { ano: number; mes: number }) =>
     apiClient.post<MesReferencia>('/meses/', data),
-  getMesAtual: (tenantId: number) =>
-    apiClient.get<MesReferencia>(`/meses/tenant/${tenantId}/atual`),
+  getMesAtual: () => apiClient.get<MesReferencia>('/meses/atual'),
   importarCustosFixos: (mesId: number) =>
     apiClient.post(`/meses/${mesId}/importar-custos-fixos`),
 
@@ -118,6 +144,24 @@ export const api = {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
   },
+
+  // Authz
+  getPermissions: () => apiClient.get<Permission[]>('/authz/permissions'),
+  getRoles: () => apiClient.get<Role[]>('/authz/roles'),
+  createRole: (data: { nome: string; descricao?: string; permission_codes: string[] }) =>
+    apiClient.post<Role>('/authz/roles', data),
+  updateRole: (id: number, data: { nome?: string; descricao?: string; permission_codes?: string[] }) =>
+    apiClient.put<Role>(`/authz/roles/${id}`, data),
+  deleteRole: (id: number) => apiClient.delete(`/authz/roles/${id}`),
+  getProfiles: () => apiClient.get<Profile[]>('/authz/profiles'),
+  createProfile: (data: { nome: string; descricao?: string; role_ids: number[] }) =>
+    apiClient.post<Profile>('/authz/profiles', data),
+  updateProfile: (id: number, data: { nome?: string; descricao?: string; role_ids?: number[] }) =>
+    apiClient.put<Profile>(`/authz/profiles/${id}`, data),
+  deleteProfile: (id: number) => apiClient.delete(`/authz/profiles/${id}`),
+  assignProfile: (usuarioId: number, profileId: number) =>
+    apiClient.put<Usuario>(`/authz/usuarios/${usuarioId}/profile`, { role_profile_id: profileId }),
+  getMyTenant: () => apiClient.get('/tenants/me'),
 }
 
 export default apiClient

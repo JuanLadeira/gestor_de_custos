@@ -12,12 +12,15 @@ export const useAuthStore = defineStore('auth', () => {
   const userId = ref<number | null>(
     sessionStorage.getItem('user_id') ? Number(sessionStorage.getItem('user_id')) : null,
   )
-  const role = ref<'OWNER' | 'MEMBER' | null>(
-    (sessionStorage.getItem('role') as 'OWNER' | 'MEMBER' | null) ?? null,
+  const permissions = ref<string[]>(
+    JSON.parse(sessionStorage.getItem('permissions') || '[]'),
   )
 
   const isAuthenticated = computed(() => !!token.value)
-  const isOwner = computed(() => role.value === 'OWNER')
+
+  function can(code: string): boolean {
+    return permissions.value.includes(code)
+  }
 
   async function login(usernameInput: string, password: string) {
     try {
@@ -31,10 +34,10 @@ export const useAuthStore = defineStore('auth', () => {
       const me = await api.getMe()
       tenantId.value = me.data.tenant_id
       userId.value = me.data.id
-      role.value = me.data.role
+      permissions.value = me.data.permissions
       sessionStorage.setItem('tenant_id', String(me.data.tenant_id))
       sessionStorage.setItem('user_id', String(me.data.id))
-      sessionStorage.setItem('role', me.data.role)
+      sessionStorage.setItem('permissions', JSON.stringify(me.data.permissions))
 
       router.push('/custos')
       return { success: true }
@@ -51,14 +54,14 @@ export const useAuthStore = defineStore('auth', () => {
     username.value = null
     tenantId.value = null
     userId.value = null
-    role.value = null
+    permissions.value = []
     sessionStorage.removeItem('token')
     sessionStorage.removeItem('username')
     sessionStorage.removeItem('tenant_id')
     sessionStorage.removeItem('user_id')
-    sessionStorage.removeItem('role')
+    sessionStorage.removeItem('permissions')
     router.push('/login')
   }
 
-  return { token, username, tenantId, userId, role, isAuthenticated, isOwner, login, logout }
+  return { token, username, tenantId, userId, permissions, isAuthenticated, can, login, logout }
 })
