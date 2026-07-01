@@ -18,6 +18,13 @@
             <template v-if="m.status === 'ABERTO'"> · Aberto</template>
           </option>
         </select>
+        <label
+          v-if="authStore.can('custo:import')"
+          style="display:inline-flex;align-items:center;gap:6px;background:#f1f5f9;color:#334155;font-size:13px;font-weight:600;padding:9px 14px;border-radius:9px;cursor:pointer;margin-right:8px;"
+        >
+          <input type="file" accept=".csv" @change="importarFatura" style="display:none;" />
+          {{ importando ? 'Importando…' : 'Importar fatura' }}
+        </label>
         <button
           v-if="authStore.can('custo:create')"
           @click="abrirCreate"
@@ -455,6 +462,25 @@ async function carregarCustos() {
     custos.value = r.data
   } finally {
     loading.value = false
+  }
+}
+
+const importando = ref(false)
+
+async function importarFatura(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  importando.value = true
+  try {
+    const { data } = await api.importarFatura(file)
+    alert(`${data.criados} custos criados, ${data.ignorados} ignorados em ${data.meses_afetados} mês(es).`)
+    await carregarCustos()
+  } catch (err: any) {
+    alert(err.response?.data?.detail || 'Falha ao importar fatura')
+  } finally {
+    importando.value = false
+    input.value = ''
   }
 }
 

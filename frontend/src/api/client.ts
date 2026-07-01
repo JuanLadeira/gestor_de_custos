@@ -128,6 +128,13 @@ export const api = {
   updateCusto: (id: number, data: Partial<Custo>) =>
     apiClient.put<Custo>(`/custos/${id}`, data),
   deleteCusto: (id: number) => apiClient.delete(`/custos/${id}`),
+  importarFatura: (file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    return apiClient.post<{ criados: number; ignorados: number; meses_afetados: number }>(
+      '/custos/importar', form, { headers: { 'Content-Type': 'multipart/form-data' } },
+    )
+  },
 
   // Rateios
   getRateios: (params?: { custo_id?: number; usuario_id?: number }) =>
