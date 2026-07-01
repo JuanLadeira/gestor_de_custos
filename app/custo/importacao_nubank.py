@@ -51,7 +51,7 @@ def parse_nubank_csv(conteudo: bytes) -> list[LinhaFatura]:
         except ValueError as e:
             raise CSVFaturaInvalido(f"Data inválida: {data_str!r}") from e
         valor = _parse_valor(valor_str)
-        chave = (data_str, titulo, valor_str.strip())
+        chave = (data_str, titulo, str(valor))
         ocorrencia = vistos.get(chave, 0)
         vistos[chave] = ocorrencia + 1
         linhas.append(LinhaFatura(data=data, titulo=titulo, valor=valor, ocorrencia=ocorrencia))

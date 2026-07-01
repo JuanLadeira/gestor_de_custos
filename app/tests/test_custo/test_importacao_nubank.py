@@ -44,3 +44,14 @@ def test_cabecalho_invalido_levanta():
 def test_valor_nao_parseavel_levanta():
     with pytest.raises(CSVFaturaInvalido):
         parse_nubank_csv(b'date,title,amount\n2026-07-01,x,"abc"\n')
+
+
+def test_ocorrencia_ignora_whitespace_no_valor():
+    csv = (
+        b"date,title,amount\n"
+        b'2026-06-28,Dl *Uberrides,"5,52"\n'
+        b'2026-06-28,Dl *Uberrides,"5,52 "\n'
+    )
+    linhas = parse_nubank_csv(csv)
+    assert all(l.valor == Decimal("5.52") for l in linhas)
+    assert sorted(l.ocorrencia for l in linhas) == [0, 1]
