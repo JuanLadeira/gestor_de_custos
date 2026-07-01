@@ -32,12 +32,18 @@ class CustoFixoService:
     async def get_by_id(self, custo_fixo_id: int) -> CustoFixo | None:
         return await self.session.get(CustoFixo, custo_fixo_id)
 
-    async def create(self, data: CustoFixoCreate) -> CustoFixo:
+    async def get_scoped(self, custo_fixo_id: int, tenant_id: int) -> CustoFixo | None:
+        cf = await self.session.get(CustoFixo, custo_fixo_id)
+        if cf is None or cf.tenant_id != tenant_id:
+            return None
+        return cf
+
+    async def create(self, data: CustoFixoCreate, tenant_id: int) -> CustoFixo:
         custo_fixo = CustoFixo(
             descricao=data.descricao,
             valor=data.valor,
             dia_vencimento=data.dia_vencimento,
-            tenant_id=data.tenant_id,
+            tenant_id=tenant_id,
         )
         self.session.add(custo_fixo)
         await self.session.flush()

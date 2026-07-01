@@ -8,7 +8,6 @@ class CustoFixoBase(BaseModel):
     descricao: str
     valor: Decimal
     dia_vencimento: int = 10
-    tenant_id: int
 
     @field_validator("dia_vencimento")
     @classmethod
@@ -54,6 +53,7 @@ class CustoFixoPublic(CustoFixoBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    tenant_id: int
     ativo: bool
     created_at: datetime
     updated_at: datetime

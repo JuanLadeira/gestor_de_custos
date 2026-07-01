@@ -1,5 +1,7 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
+from app.auth.current_user import CurrentUser
+from app.authz.dependencies import require
 from app.custo_fixo.schemas import CustoFixoCreate, CustoFixoPublic, CustoFixoUpdate
 from app.custo_fixo.services import CustoFixoServiceDep
 
@@ -10,39 +12,37 @@ router = APIRouter(
 )
 
 
-@router.get("/", response_model=list[CustoFixoPublic])
-async def list_custos_fixos(
-    service: CustoFixoServiceDep,
-    tenant_id: int | None = None,
-):
-    return await service.get_all(tenant_id=tenant_id)
+@router.get("/", response_model=list[CustoFixoPublic], dependencies=[Depends(require("custo_fixo:read"))])
+async def list_custos_fixos(current_user: CurrentUser, service: CustoFixoServiceDep):
+    return await service.get_all(tenant_id=current_user.tenant_id)
 
 
-@router.get("/{custo_fixo_id}", response_model=CustoFixoPublic)
-async def get_custo_fixo(custo_fixo_id: int, service: CustoFixoServiceDep):
-    custo_fixo = await service.get_by_id(custo_fixo_id)
-    if not custo_fixo:
+@router.get("/{custo_fixo_id}", response_model=CustoFixoPublic, dependencies=[Depends(require("custo_fixo:read"))])
+async def get_custo_fixo(custo_fixo_id: int, current_user: CurrentUser, service: CustoFixoServiceDep):
+    cf = await service.get_scoped(custo_fixo_id, current_user.tenant_id)
+    if not cf:
         raise HTTPException(status_code=404, detail="Custo fixo nao encontrado")
-    return custo_fixo
+    return cf
 
 
-@router.post("/", response_model=CustoFixoPublic, status_code=status.HTTP_201_CREATED)
-async def create_custo_fixo(data: CustoFixoCreate, service: CustoFixoServiceDep):
-    return await service.create(data)
+@router.post("/", response_model=CustoFixoPublic, status_code=status.HTTP_201_CREATED,
+             dependencies=[Depends(require("custo_fixo:create"))])
+async def create_custo_fixo(data: CustoFixoCreate, current_user: CurrentUser, service: CustoFixoServiceDep):
+    return await service.create(data, tenant_id=current_user.tenant_id)
 
 
-@router.put("/{custo_fixo_id}", response_model=CustoFixoPublic)
-async def update_custo_fixo(
-    custo_fixo_id: int, data: CustoFixoUpdate, service: CustoFixoServiceDep
-):
-    custo_fixo = await service.update(custo_fixo_id, data)
-    if not custo_fixo:
+@router.put("/{custo_fixo_id}", response_model=CustoFixoPublic, dependencies=[Depends(require("custo_fixo:update"))])
+async def update_custo_fixo(custo_fixo_id: int, data: CustoFixoUpdate, current_user: CurrentUser, service: CustoFixoServiceDep):
+    cf = await service.get_scoped(custo_fixo_id, current_user.tenant_id)
+    if not cf:
         raise HTTPException(status_code=404, detail="Custo fixo nao encontrado")
-    return custo_fixo
+    return await service.update(custo_fixo_id, data)
 
 
-@router.delete("/{custo_fixo_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_custo_fixo(custo_fixo_id: int, service: CustoFixoServiceDep):
-    deleted = await service.delete(custo_fixo_id)
-    if not deleted:
+@router.delete("/{custo_fixo_id}", status_code=status.HTTP_204_NO_CONTENT,
+               dependencies=[Depends(require("custo_fixo:delete"))])
+async def delete_custo_fixo(custo_fixo_id: int, current_user: CurrentUser, service: CustoFixoServiceDep):
+    cf = await service.get_scoped(custo_fixo_id, current_user.tenant_id)
+    if not cf:
         raise HTTPException(status_code=404, detail="Custo fixo nao encontrado")
+    await service.delete(custo_fixo_id)
