@@ -227,7 +227,8 @@ class AuthzService:
 
         dono = await self.get_profile_by_nome(tenant_id, "Dono")
         removing_last_dono = (
-            user.role_profile_id == dono.id
+            dono is not None
+            and user.role_profile_id == dono.id
             and target.id != dono.id
             and await self.count_active_dono(tenant_id) <= 1
         )

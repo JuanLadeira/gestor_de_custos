@@ -40,7 +40,6 @@ class CustoService:
             data_vencimento=data.data_vencimento,
             tipo=data.tipo,
             mes_referencia_id=data.mes_referencia_id,
-            custo_fixo_origem_id=data.custo_fixo_origem_id,
         )
         self.session.add(custo)
         await self.session.flush()

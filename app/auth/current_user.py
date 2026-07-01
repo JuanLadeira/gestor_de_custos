@@ -41,7 +41,7 @@ async def get_current_user(
         raise credentials_exception
 
     user = await service.get_by_username(username)
-    if not user:
+    if not user or not user.ativo:
         raise credentials_exception
 
     return user

@@ -144,10 +144,10 @@ async def deletar_template(template_id: int, current_user: CurrentUser, service:
     tmpl = await service.get_template(template_id)
     if not tmpl:
         raise HTTPException(status_code=404, detail="Template não encontrado")
-    # verify ownership via campanha
+    # verify ownership via campanha (404 to avoid leaking cross-tenant existence)
     campanha = await service.get_by_id(tmpl.campanha_id, current_user.tenant_id)
     if not campanha:
-        raise HTTPException(status_code=403, detail="Acesso negado")
+        raise HTTPException(status_code=404, detail="Template não encontrado")
     await service.delete_template(tmpl)
 
 
@@ -194,7 +194,7 @@ async def deletar_contato(contato_id: int, current_user: CurrentUser, service: C
         raise HTTPException(status_code=404, detail="Contato não encontrado")
     campanha = await service.get_by_id(contato.campanha_id, current_user.tenant_id)
     if not campanha:
-        raise HTTPException(status_code=403, detail="Acesso negado")
+        raise HTTPException(status_code=404, detail="Contato não encontrado")
     await service.delete_contato(contato)
 
 

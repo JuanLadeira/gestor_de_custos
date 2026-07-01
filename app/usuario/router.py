@@ -69,11 +69,23 @@ async def create_usuario(
 @router.put("/{usuario_id}", response_model=UsuarioPublic,
             dependencies=[Depends(require("usuario:update"))])
 async def update_usuario(
-    usuario_id: int, data: UsuarioUpdate, current_user: CurrentUser, service: UsuarioServiceDep
+    usuario_id: int,
+    data: UsuarioUpdate,
+    current_user: CurrentUser,
+    service: UsuarioServiceDep,
+    authz: AuthzServiceDep,
 ):
     usuario = await service.get_by_id(usuario_id)
     if not usuario or usuario.tenant_id != current_user.tenant_id:
         raise HTTPException(status_code=404, detail="Usuario nao encontrado")
+
+    # Anti-lockout: block deactivating the last active Dono.
+    # (Profile reassignment goes through PUT /usuarios/{id}/profile, guarded separately.)
+    if data.ativo is False and usuario.ativo:
+        dono = await authz.get_profile_by_nome(current_user.tenant_id, "Dono")
+        if dono and usuario.role_profile_id == dono.id and await authz.count_active_dono(current_user.tenant_id) <= 1:
+            raise HTTPException(status_code=409, detail="Não é possível remover o último Dono")
+
     return await service.update(usuario_id, data)
 
 

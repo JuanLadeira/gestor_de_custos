@@ -22,7 +22,9 @@ class CustoBase(BaseModel):
 
 
 class CustoCreate(CustoBase):
-    custo_fixo_origem_id: int | None = None
+    # custo_fixo_origem_id is set server-side by the fixed-cost import,
+    # never accepted from the client (would allow a cross-tenant link).
+    pass
 
 
 class CustoUpdate(BaseModel):
