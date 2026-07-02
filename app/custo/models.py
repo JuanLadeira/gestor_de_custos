@@ -3,7 +3,7 @@ from datetime import date
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Date, Enum, ForeignKey, Numeric, String
+from sqlalchemy import Date, Enum, ForeignKey, Index, Numeric, String, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
@@ -30,6 +30,17 @@ class Custo(Base):
     """Actual cost entry for a specific month."""
 
     __tablename__ = "custo"
+    __table_args__ = (
+        # dedup: um fingerprint no máximo uma vez por mês (espelha a migration
+        # l0m1n2o3p4q5). Índice parcial: só vale quando há fingerprint.
+        Index(
+            "uq_custo_mes_fingerprint",
+            "mes_referencia_id",
+            "import_fingerprint",
+            unique=True,
+            postgresql_where=text("import_fingerprint IS NOT NULL"),
+        ),
+    )
 
     descricao: Mapped[str] = mapped_column(String(200), nullable=False)
     valor: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
