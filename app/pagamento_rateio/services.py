@@ -11,8 +11,10 @@ from app.custo.models import Custo, StatusPagamento
 from app.database import AsyncDBSession
 from app.pagamento_rateio.models import PagamentoRateio, StatusRateio
 from app.pagamento_rateio.schemas import PagamentoRateioCreate, PagamentoRateioUpdate
+from app.settings import Settings
 
-UPLOAD_DIR = "/app/uploads/comprovantes"
+settings = Settings()
+UPLOAD_DIR = os.path.join(settings.UPLOAD_DIR, "comprovantes")
 
 
 class PagamentoRateioService:

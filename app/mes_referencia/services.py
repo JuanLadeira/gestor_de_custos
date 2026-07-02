@@ -45,26 +45,22 @@ class MesReferenciaService:
         )
         return result.scalar_one_or_none()
 
-    async def obter_ou_criar_mes_atual(self, tenant_id: int) -> MesReferencia:
-        """Get or create the current month reference, importing fixed costs if new."""
-        hoje = date.today()
-        ano = hoje.year
-        mes = hoje.month
-
-        mes_ref = await self.get_by_tenant_ano_mes(tenant_id, ano, mes)
-        if mes_ref:
-            return mes_ref
-
-        # Create new month
+    async def get_or_create(self, tenant_id: int, ano: int, mes: int) -> MesReferencia:
+        """Get-or-create de um mês; importa custos fixos ao criar um mês novo."""
+        existente = await self.get_by_tenant_ano_mes(tenant_id, ano, mes)
+        if existente:
+            return existente
         mes_ref = MesReferencia(tenant_id=tenant_id, ano=ano, mes=mes)
         self.session.add(mes_ref)
         await self.session.flush()
         await self.session.refresh(mes_ref)
-
-        # Import fixed costs
         await self.importar_custos_fixos_para_mes(mes_ref.id, tenant_id)
-
         return mes_ref
+
+    async def obter_ou_criar_mes_atual(self, tenant_id: int) -> MesReferencia:
+        """Get or create the current month reference, importing fixed costs if new."""
+        hoje = date.today()
+        return await self.get_or_create(tenant_id, hoje.year, hoje.month)
 
     async def importar_custos_fixos_para_mes(
         self, mes_referencia_id: int, tenant_id: int

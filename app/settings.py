@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     ALGORITHM: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int
 
+    # Uploads (comprovantes). Absolute in Docker (WORKDIR /app); override via
+    # env em ambientes onde /app nao e gravavel (ex.: CI).
+    UPLOAD_DIR: str = "/app/uploads"
+
     # Redis
     REDIS_URL: str = "redis://redis:6379/0"
 

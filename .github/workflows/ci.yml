@@ -1,8 +1,11 @@
-
 name: CI
 
 on:
   push:
+    branches:
+      - develop
+      - main
+  pull_request:
     branches:
       - develop
       - main
@@ -13,30 +16,30 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
         with:
           python-version: '3.11'
 
-      - name: Install uv
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-
-      - name: Install dependencies with uv
-        run: |
-          uv venv
-          uv add taskipy ruff
+      - name: Install dependencies
+        run: uv sync --frozen
 
       - name: Run tests
+        # Tests use testcontainers to spin their own Postgres (Docker is
+        # available on ubuntu-latest), so no `db` service is needed here.
         env:
-          DATABASE_URL: postgresql://user:password@db:5432/mydatabase
-          SECRET_KEY: mysecretkey
-          ALGORITHM: HS256
-          ACCESS_TOKEN_EXPIRE_MINUTES: "30"
+          # Settings (app/settings.py) requires these at import; the actual
+          # test DB is provisioned by testcontainers in conftest, so these
+          # DB values just need to satisfy pydantic-settings.
+          DATABASE_URL: postgresql+asyncpg://user:password@localhost:5432/mydatabase
           POSTGRES_USER: user
           POSTGRES_PASSWORD: password
           POSTGRES_DB: mydatabase
+          SECRET_KEY: mysecretkey
+          ALGORITHM: HS256
+          ACCESS_TOKEN_EXPIRE_MINUTES: "30"
+          # /app nao e gravavel no runner; usa um dir temporario.
+          UPLOAD_DIR: /tmp/uploads
         run: uv run pytest -vv

@@ -11,6 +11,7 @@ from app.auth import router as auth_router
 from app.custo import router as custo_router
 from app.custo_fixo import router as custo_fixo_router
 from app.logger import logger
+from app.settings import Settings
 from app.mes_referencia import router as mes_referencia_router
 from app.pagamento_rateio import router as pagamento_rateio_router
 from app.plano import router as plano_router
@@ -65,8 +66,9 @@ app.include_router(pagamento_rateio_router.router)
 app.include_router(whatsapp_router.router)
 app.include_router(campanha_router.router)
 
-os.makedirs("/app/uploads/comprovantes", exist_ok=True)
-app.mount("/uploads", StaticFiles(directory="/app/uploads"), name="uploads")
+settings = Settings()
+os.makedirs(os.path.join(settings.UPLOAD_DIR, "comprovantes"), exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
 
 
 @app.get("/health")
